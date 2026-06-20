@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0E0F12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Журнал силовых</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --bg:#0E0F12; --surface:#181A1F; --surface2:#23262D; --line:#2C3038;
+  --text:#F2F4F6; --muted:#8B919B; --faint:#5A606A;
+  --accent:#B6F436; --accent-dim:#7d9e2b; --accent-ink:#0E0F12;
+  --blue:#5FB0FF; --danger:#FF5C5C; --warn:#FFB23E;
+  --r:14px; --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px; line-height:1.4; overscroll-behavior-y:none;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer}
+input,select{font-family:inherit;font-size:16px}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
+.app{max-width:560px;margin:0 auto;min-height:100%;padding-bottom:calc(74px + var(--safe-b))}
+
+/* Top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(14,15,18,.86);backdrop-filter:blur(12px);
+  padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.top h1{font-size:20px}
+.top .sub{color:var(--muted);font-size:13px;font-weight:600}
+.top .spacer{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:11px;background:var(--surface);display:flex;
+  align-items:center;justify-content:center;font-size:18px;border:1px solid var(--line)}
+.iconbtn:active{background:var(--surface2)}
+
+.wrap{padding:14px 16px 24px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.daycard{margin-bottom:12px}
+.daycard .body{padding:16px}
+.daycard h2{font-size:18px;margin-bottom:4px}
+.daycard .meta{color:var(--muted);font-size:13px;font-weight:600;display:flex;gap:6px;flex-wrap:wrap}
+.daycard .tag{background:var(--surface2);padding:2px 8px;border-radius:7px;font-size:12px;color:var(--text)}
+.daycard .exlist{margin-top:10px;color:var(--faint);font-size:13px;line-height:1.5}
+.daycard .row{display:flex;align-items:stretch;gap:0}
+.daycard .start{flex:0 0 116px;background:var(--accent);color:var(--accent-ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;
+  font-size:15px;gap:2px;border-left:1px solid var(--line)}
+.daycard .start:active{background:var(--accent-dim)}
+.daycard .start .sub{font-size:11px;font-weight:700;opacity:.7}
+
+.eyebrow{color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:18px 2px 8px}
+.eyebrow:first-child{margin-top:4px}
+
+/* Session */
+.ex{margin-bottom:14px}
+.ex .head{padding:13px 14px 11px;border-bottom:1px solid var(--line);position:relative}
+.ex .head h3{font-size:16px;line-height:1.25;padding-right:30px}
+.ex .head .target{color:var(--muted);font-size:12.5px;font-weight:600;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.ex .head .target b{color:var(--text);font-weight:700}
+.ex .menu{position:absolute;top:10px;right:8px;width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+.ex .menu:active{background:var(--surface2)}
+.ex .note{padding:0 14px 10px;color:var(--muted);font-size:13px;line-height:1.5;white-space:pre-line;border-bottom:1px solid var(--line)}
+
+/* set row */
+.setrow{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:none}
+.setrow.done{background:linear-gradient(90deg,rgba(182,244,54,.10),rgba(182,244,54,.02))}
+.setno{flex:0 0 26px;text-align:center;color:var(--faint);font-weight:800;font-size:14px}
+.setrow.done .setno{color:var(--accent)}
+.field{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.field label{font-size:10px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.stepper{display:flex;align-items:center;background:var(--surface2);border-radius:10px;overflow:hidden;width:100%}
+.stepper button{width:30px;height:38px;font-size:19px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.stepper button:active{background:var(--line)}
+.stepper input{flex:1;width:100%;min-width:0;text-align:center;background:none;border:none;color:var(--text);
+  font-size:17px;font-weight:800;padding:0;outline:none}
+.times{flex:0 0 14px;text-align:center;color:var(--faint);font-weight:800;align-self:flex-end;padding-bottom:9px}
+.check{flex:0 0 40px;height:40px;border-radius:11px;background:var(--surface2);display:flex;
+  align-items:center;justify-content:center;font-size:19px;color:var(--faint);border:1px solid var(--line)}
+.check:active{transform:scale(.94)}
+.setrow.done .check{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pr{position:absolute;display:none}
+.prbadge{flex:0 0 auto;font-size:10px;font-weight:800;color:var(--accent-ink);background:var(--accent);
+  padding:2px 6px;border-radius:6px;letter-spacing:.03em}
+
+.exfoot{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.minibtn{flex:1;text-align:center;background:var(--surface2);border-radius:9px;padding:8px;font-size:13px;
+  font-weight:700;color:var(--muted)}
+.minibtn:active{background:var(--line)}
+
+.bigbtn{display:block;width:100%;text-align:center;background:var(--accent);color:var(--accent-ink);
+  font-weight:800;font-size:16px;padding:15px;border-radius:13px;margin-top:6px}
+.bigbtn:active{background:var(--accent-dim)}
+.bigbtn.ghost{background:var(--surface);color:var(--text);border:1px solid var(--line)}
+.bigbtn.ghost:active{background:var(--surface2)}
+.bigbtn.danger{background:transparent;color:var(--danger);border:1px solid var(--line)}
+.addex{display:block;width:100%;text-align:center;padding:13px;border:1px dashed var(--line);
+  border-radius:13px;color:var(--muted);font-weight:700;font-size:14px;background:transparent;margin-top:4px}
+.addex:active{background:var(--surface)}
+
+/* rest timer */
+.rest{position:fixed;left:0;right:0;bottom:calc(74px + var(--safe-b));z-index:30;display:none}
+.rest.on{display:block}
+.rest .inner{max-width:560px;margin:0 auto;padding:0 12px 8px}
+.rest .bar{background:var(--surface);border:1px solid var(--accent);border-radius:13px;
+  display:flex;align-items:center;gap:12px;padding:10px 12px;overflow:hidden;position:relative}
+.rest .prog{position:absolute;left:0;top:0;bottom:0;background:rgba(182,244,54,.14);transition:width 1s linear}
+.rest .t{position:relative;font-size:24px;font-weight:800;color:var(--accent)}
+.rest .lbl{position:relative;flex:1;font-size:13px;color:var(--muted);font-weight:600}
+.rest .rb{position:relative;background:var(--surface2);padding:8px 12px;border-radius:9px;font-weight:700;font-size:13px}
+.rest .rb:active{background:var(--line)}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(20,22,26,.95);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding-bottom:var(--safe-b);display:flex}
+.nav a{flex:1;text-align:center;padding:9px 0 8px;color:var(--faint);font-size:11px;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;gap:3px}
+.nav a .ic{font-size:21px;line-height:1}
+.nav a.on{color:var(--accent)}
+
+/* progress */
+.pick{width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);
+  padding:13px 14px;border-radius:12px;font-weight:700;-webkit-appearance:none;appearance:none;margin-bottom:14px}
+.statrow{display:flex;gap:10px;margin-bottom:14px}
+.stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
+.stat .v{font-size:22px;font-weight:800}
+.stat .v small{font-size:13px;color:var(--muted);font-weight:700}
+.stat .k{font-size:11px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
+.chartwrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 10px 8px;margin-bottom:14px}
+.chartwrap h3{font-size:13px;color:var(--muted);padding:0 6px 8px;font-weight:700}
+svg.chart{width:100%;height:170px;display:block}
+.hbar{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}
+.hbar:last-child{border-bottom:none}
+.hbar .d{color:var(--muted);font-weight:600}
+.hbar .val{font-weight:800}
+
+/* history */
+.hsession{margin-bottom:12px}
+.hsession .h{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border-bottom:1px solid var(--line)}
+.hsession .h .n{font-weight:800;font-size:15px}
+.hsession .h .d{color:var(--muted);font-size:12.5px;font-weight:600}
+.hsession .e{padding:9px 14px;border-bottom:1px solid var(--line);font-size:13.5px;display:flex;justify-content:space-between;gap:10px}
+.hsession .e:last-child{border-bottom:none}
+.hsession .e .nm{color:var(--muted);font-weight:600;flex:1}
+.hsession .e .s{font-weight:700;text-align:right;white-space:nowrap}
+.del{color:var(--danger);font-size:13px;font-weight:700;padding:10px 14px}
+
+/* empty */
+.empty{text-align:center;color:var(--muted);padding:50px 20px}
+.empty .em{font-size:40px;margin-bottom:10px}
+.empty p{margin:6px 0;font-size:14px}
+
+/* editor list */
+.edit-ex{display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid var(--line)}
+.edit-ex:last-child{border-bottom:none}
+.edit-ex .nm{flex:1;font-weight:600;font-size:14px}
+.edit-ex .ty{font-size:11px;color:var(--muted);font-weight:700}
+.edit-ex .x{color:var(--danger);font-size:18px;padding:4px 8px}
+.handle{color:var(--faint);font-size:18px}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);display:none;align-items:flex-end}
+.modal.on{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:560px;margin:0 auto;border-radius:18px 18px 0 0;
+  padding:18px 16px calc(20px + var(--safe-b));max-height:90vh;overflow:auto;border-top:1px solid var(--line)}
+.sheet h2{font-size:18px;margin-bottom:14px}
+.fl{margin-bottom:12px}
+.fl label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em}
+.fl input,.fl select,.fl textarea{width:100%;background:var(--surface2);border:1px solid var(--line);color:var(--text);
+  padding:12px;border-radius:11px;outline:none}
+.fl textarea{min-height:64px;resize:vertical}
+.fl .two{display:flex;gap:10px}
+.fl .two>div{flex:1}
+.seg{display:flex;background:var(--surface2);border-radius:11px;padding:3px;gap:3px}
+.seg button{flex:1;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.toast{position:fixed;bottom:calc(86px + var(--safe-b));left:50%;transform:translateX(-50%);
+  background:var(--surface2);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:12px;
+  font-size:14px;font-weight:700;z-index:80;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1}
+.toast.pr{border-color:var(--accent);color:var(--accent)}
+
+/* hold timer overlay */
+.htimer{position:fixed;inset:0;z-index:90;background:rgba(10,11,13,.97);display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.htimer.on{display:flex}
+.ht-inner{text-align:center;padding:20px;width:100%;max-width:420px}
+.ht-ex{font-size:20px;font-weight:800;margin-bottom:3px;padding:0 10px;line-height:1.25}
+.ht-set{color:var(--muted);font-weight:700;font-size:13px;margin-bottom:26px}
+.ht-ring{position:relative;width:min(72vw,260px);aspect-ratio:1;margin:0 auto}
+.ht-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ht-track{fill:none;stroke:var(--surface2);stroke-width:9}
+.ht-arc{fill:none;stroke:var(--accent);stroke-width:9;stroke-linecap:round}
+.ht-time{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ht-big{font-size:74px;font-weight:800;line-height:1;color:var(--accent)}
+.ht-lbl{color:var(--muted);font-weight:700;font-size:13px;margin-top:6px;max-width:78%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ht-controls{display:flex;gap:10px;margin-top:34px}
+.ht-controls button{flex:1;padding:15px 8px;border-radius:13px;font-weight:800;font-size:15px;
+  background:var(--surface);border:1px solid var(--line);color:var(--text)}
+.ht-controls button:active{background:var(--surface2)}
+.ht-controls #htDone{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ht-controls #htCancel{color:var(--muted)}
+.check.play{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:16px}
+.setrow.done .check.play{font-size:19px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div id="topTitle"><h1>Журнал силовых</h1></div>
+    <div class="spacer"></div>
+    <div id="topAction"></div>
+  </div>
+  <div id="root" class="wrap"></div>
+</div>
+
+<div class="rest" id="rest">
+  <div class="inner"><div class="bar">
+    <div class="prog" id="restProg"></div>
+    <div class="t num" id="restT">1:30</div>
+    <div class="lbl">Отдых</div>
+    <button class="rb" id="restAdd">+15с</button>
+    <button class="rb" id="restSkip">Пропустить</button>
+  </div></div>
+</div>
+
+<div class="nav" id="nav"></div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<div class="htimer" id="htimer">
+  <div class="ht-inner">
+    <div class="ht-ex" id="htEx">Упражнение</div>
+    <div class="ht-set" id="htSet">Подход 1</div>
+    <div class="ht-ring">
+      <svg viewBox="0 0 200 200">
+        <circle class="ht-track" cx="100" cy="100" r="88"></circle>
+        <circle class="ht-arc" id="htArc" cx="100" cy="100" r="88"></circle>
+      </svg>
+      <div class="ht-time">
+        <div class="ht-big num" id="htBig">5</div>
+        <div class="ht-lbl" id="htLbl">приготовься</div>
+      </div>
+    </div>
+    <div class="ht-controls">
+      <button id="htCancel">Отмена</button>
+      <button id="htPause">Пауза</button>
+      <button id="htDone">Готово</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============ storage ============ */
+const KEY="strength_v1";
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+function seedData(){
+  const ex=(name,type,sets,rmin,rmax,rpe,last,note)=>({
+    id:uid(),name,type,sets,rmin,rmax,rpe:rpe||"",note:note||"",last:last||[]
+  });
+  // last: weighted [{w,r}], reps [{r}], time [{t}]
+  const W=(w,r)=>({w,r}), R=r=>({r}), T=t=>({t});
+  const programs=[
+    {id:uid(),name:"Грудь + Спина + Дельты",exercises:[
+      ex("Жим в тренажёре сидя","weighted",4,8,12,"7",[W(55,8),W(45,10),W(45,10),W(40,10)]),
+      ex("Тяга горизонтального блока узким хватом","weighted",4,10,12,"7",[W(45,8),W(40,10),W(40,10),W(35,10)]),
+      ex("Тяга вертикального блока средним хватом","weighted",4,10,12,"7",[W(45,8),W(40,10),W(40,10),W(35,10)]),
+      ex("Обратная бабочка (задние дельты)","weighted",4,12,15,"6-7",[W(15,12),W(15,12),W(15,12),W(15,12)]),
+      ex("Разведение гантелей на наклонной","weighted",3,12,15,"6",[W(7,12),W(7,12),W(7,12)],"Низкий наклон скамьи!"),
+      ex("Face pull","weighted",3,12,15,"6",[W(15,12),W(15,12),W(15,12)]),
+      ex("Гиперэкстензия на римской скамье","reps",3,12,15,"6",[R(12),R(12),R(12)],"Грудной отдел расслаблен, акцент на ягодицы")
+    ]},
+    {id:uid(),name:"Ноги + Глютеус + Стабилизация",exercises:[
+      ex("Гакк-тренажёр","weighted",3,10,12,"7",[W(40,10),W(30,12),W(30,12)]),
+      ex("Разгибания ног в тренажёре","weighted",4,12,15,"6-7",[W(35,12),W(35,12),W(35,12),W(35,12)]),
+      ex("Сгибания ног лёжа / сидя","weighted",4,12,15,"7",[W(30,15),W(30,15),W(30,15),W(30,15)]),
+      ex("Гиперэкстензия","reps",3,12,15,"6",[R(15),R(15),R(15)]),
+      ex("Планка (лайтовая)","time",3,20,30,"6",[T(25),T(25),T(25)]),
+      ex("Dead bug","reps",3,8,8,"6",[R(8),R(8),R(8)])
+    ]},
+    {id:uid(),name:"Спина + Руки + Дельты",exercises:[
+      ex("Тяга горизонтального блока широким хватом","weighted",4,10,12,"7",[W(40,8),W(35,10),W(35,10),W(35,10)]),
+      ex("Жим груди в Хаммере (сидя)","weighted",4,8,12,"7",[W(35,11),W(35,11),W(35,11),W(35,11)]),
+      ex("Тяга верхнего блока узким параллельным хватом","weighted",4,10,12,"7",[W(35,11),W(35,11),W(35,11),W(35,11)]),
+      ex("Face pull","weighted",4,12,15,"6",[W(15,12),W(15,12),W(15,12),W(15,12)]),
+      ex("Подъём гантелей на бицепс сидя","weighted",3,10,12,"6-7",[W(10,12),W(10,12),W(10,12)]),
+      ex("Разгибания на трицепс в верхнем блоке","weighted",4,12,15,"6-7",[W(15,12),W(15,12),W(15,12),W(15,12)]),
+      ex("Изометрия лопаток","time",3,20,20,"",[T(20),T(20),T(20)])
+    ]},
+    {id:uid(),name:"Ноги + Глютеус + Кор",exercises:[
+      ex("Жим ногами (другая постановка стоп)","weighted",4,10,12,"7",[W(85,10),W(75,12),W(75,12),W(75,12)]),
+      ex("Болгарские приседы","weighted",3,8,12,"6-7",[W(0,12),W(0,12),W(0,12)],"С опорой, без веса или лёгкие гантели"),
+      ex("Сгибания ног сидя","weighted",4,12,15,"7",[W(35,12),W(35,12),W(35,12),W(35,12)]),
+      ex("Глют-мост в тренажёре / с гантелью","weighted",4,10,12,"7",[W(30,12),W(30,12),W(30,12),W(30,12)]),
+      ex("Тренажёр для голени сидя","weighted",4,12,15,"6-7",[W(50,12),W(50,12),W(50,12),W(50,12)]),
+      ex("Боковая планка","time",3,20,30,"",[T(25),T(25),T(25)],"На каждую сторону"),
+      ex("Dead bug","reps",3,6,8,"6",[R(8),R(8),R(8)],"По 6–8 на сторону")
+    ]},
+    {id:uid(),name:"Заминка / Мобилити",exercises:[
+      ex("Растяжка грудных у стены","time",2,30,40,"",[T(35),T(35)],"Ладонь на стену, корпус чуть разворачиваешь, грудь раскрывается. НЕ прогибаться. Дыши спокойно."),
+      ex("Растяжка широчайших стоя","time",2,30,40,"",[T(35),T(35)],"Возьми верхний блок/перекладину, слегка отсядь назад, спина ровная. Почувствуй растяжение под рёбрами."),
+      ex("Кот–корова (мягкий)","reps",1,10,15,"",[R(12)],"На четвереньках. Вдох — грудь вперёд, выдох — спина слегка округляется. Без максимальных амплитуд."),
+      ex("Межрёберная растяжка сидя","time",2,20,30,"",[T(25),T(25)],"Сидя, одна рука вверх, лёгкий наклон в сторону. НЕ вперёд. Спокойный вдох через нос."),
+      ex("Растяжка шеи и трапеций","time",2,20,30,"",[T(25),T(25)],"Наклон головы в сторону, плечо тянется вниз. Без рывков."),
+      ex("Диафрагмальное дыхание","time",1,90,120,"",[T(90)],"Лёжа на спине, рука на груди, рука на животе. Дышишь так, чтобы грудь двигалась больше, чем живот. 8–10 дыханий.")
+    ]}
+  ];
+  return {programs,history:[],settings:{rest:90,prep:5}};
+}
+
+let DB;
+function load(){
+  try{const raw=localStorage.getItem(KEY); DB=raw?JSON.parse(raw):seedData();}
+  catch(e){DB=seedData();}
+  if(!DB.settings)DB.settings={rest:90,prep:5};
+  if(DB.settings.prep==null)DB.settings.prep=5;
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const n=document.createElement(t);if(c)n.className=c;if(h!=null)n.innerHTML=h;return n;};
+const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const e1rm=(w,r)=>w>0?w*(1+r/30):0;
+function fmtTime(s){const m=Math.floor(s/60),x=s%60;return m+":"+String(x).padStart(2,"0");}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function fmtDate(iso){const d=new Date(iso+"T00:00");return d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"});}
+let toastT;
+function toast(msg,pr){const t=$("#toast");t.textContent=msg;t.className="toast on"+(pr?" pr":"");clearTimeout(toastT);toastT=setTimeout(()=>t.className="toast",1600);}
+function vibe(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
+
+/* type labels */
+const TYPE={weighted:"вес × повт",reps:"повторы",time:"время"};
+
+/* ============ router ============ */
+let view="home", session=null, progressEx=null;
+function go(v){view=v;render();window.scrollTo(0,0);}
+
+function render(){
+  renderTop(); renderNav();
+  const r=$("#root"); r.innerHTML="";
+  if(view==="home")r.appendChild(Home());
+  else if(view==="session")r.appendChild(Session());
+  else if(view==="progress")r.appendChild(Progress());
+  else if(view==="history")r.appendChild(History());
+  else if(view==="more")r.appendChild(More());
+  else if(view==="editday")r.appendChild(EditDay());
+}
+
+function renderTop(){
+  const T={home:["Журнал силовых","выбери день"],session:[session?session.name:"Тренировка",null],
+    progress:["Прогресс",null],history:["История",null],more:["Ещё",null],editday:["Редактор дня",null]};
+  const [title,sub]=T[view]||["",null];
+  $("#topTitle").innerHTML=`<h1>${esc(title)}</h1>${sub?`<div class="sub">${esc(sub)}</div>`:""}`;
+  const a=$("#topAction"); a.innerHTML="";
+  if(view==="session"){
+    const b=el("button","iconbtn","✕");b.title="Отменить";b.onclick=()=>{if(confirm("Отменить тренировку без сохранения?")){session=null;go("home");}};
+    a.appendChild(b);
+  }else if(view==="home"){
+    const b=el("button","iconbtn","＋");b.title="Новый день";b.onclick=newDay;a.appendChild(b);
+  }else if(view==="editday"){
+    const b=el("button","iconbtn","✓");b.onclick=()=>go("home");a.appendChild(b);
+  }
+}
+
+function renderNav(){
+  const nav=$("#nav");nav.innerHTML="";
+  [["home","🏋️","Старт"],["history","🗓","История"],["progress","📈","Прогресс"],["more","⚙️","Ещё"]]
+  .forEach(([v,ic,lb])=>{
+    const a=el("a",(view===v||(v==="home"&&view==="session")||(v==="home"&&view==="editday"))?"on":"",
+      `<span class="ic">${ic}</span><span>${lb}</span>`);
+    a.onclick=()=>{if(v==="home"&&session){go("session")}else go(v);};
+    nav.appendChild(a);
+  });
+}
+
+/* ============ HOME ============ */
+function Home(){
+  const w=el("div");
+  if(session){
+    const r=el("div","card daycard");
+    r.innerHTML=`<div class="body"><div class="meta"><span class="tag" style="background:var(--accent);color:var(--accent-ink)">Идёт тренировка</span></div>
+      <h2 style="margin-top:8px">${esc(session.name)}</h2></div>`;
+    const btn=el("button","start");btn.style.cssText="flex:0 0 auto;width:100%;border:none;border-top:1px solid var(--line);padding:13px";
+    btn.innerHTML="Продолжить →";btn.onclick=()=>go("session");
+    r.appendChild(btn);w.appendChild(r);
+  }
+  DB.programs.forEach(p=>{
+    const c=el("div","card daycard");
+    const exNames=p.exercises.map(e=>e.name).join(" · ");
+    const wgt=p.exercises.filter(e=>e.type==="weighted").length;
+    const body=el("div","body");
+    body.innerHTML=`<h2>${esc(p.name)}</h2>
+      <div class="meta"><span class="tag">${p.exercises.length} упр.</span>${wgt?`<span class="tag">${wgt} с весом</span>`:""}</div>
+      <div class="exlist">${esc(exNames)}</div>`;
+    body.onclick=()=>openDayMenu(p);
+    const row=el("div","row");
+    const start=el("button","start",`Начать<span class="sub">тренировку</span>`);
+    start.onclick=(e)=>{e.stopPropagation();startSession(p);};
+    row.appendChild(body);row.appendChild(start);
+    c.appendChild(row);w.appendChild(c);
+  });
+  const hint=el("div","empty");hint.style.padding="22px 10px 4px";
+  hint.innerHTML=`<p style="color:var(--faint);font-size:12.5px">Нажми на карточку дня — переименовать или редактировать упражнения. Веса с прошлого раза подставятся автоматически.</p>`;
+  w.appendChild(hint);
+  return w;
+}
+
+function openDayMenu(p){
+  sheet(`<h2>${esc(p.name)}</h2>
+    <button class="bigbtn ghost" id="m1">Редактировать упражнения</button>
+    <button class="bigbtn ghost" id="m2" style="margin-top:8px">Переименовать день</button>
+    <button class="bigbtn ghost" id="m3" style="margin-top:8px">Дублировать день</button>
+    <button class="bigbtn danger" id="m4" style="margin-top:8px">Удалить день</button>`);
+  $("#m1").onclick=()=>{closeSheet();editDayId=p.id;go("editday");};
+  $("#m2").onclick=()=>{closeSheet();const n=prompt("Название дня:",p.name);if(n){p.name=n.trim();save();render();}};
+  $("#m3").onclick=()=>{closeSheet();const cp=JSON.parse(JSON.stringify(p));cp.id=uid();cp.name=p.name+" (копия)";cp.exercises.forEach(e=>e.id=uid());DB.programs.push(cp);save();render();toast("День скопирован");};
+  $("#m4").onclick=()=>{if(confirm("Удалить день «"+p.name+"»? История останется.")){closeSheet();DB.programs=DB.programs.filter(x=>x.id!==p.id);save();render();}};
+}
+function newDay(){
+  const n=prompt("Название нового дня:","Новый день");
+  if(!n)return;
+  const p={id:uid(),name:n.trim(),exercises:[]};
+  DB.programs.push(p);save();editDayId=p.id;go("editday");
+}
+
+/* ============ EDIT DAY ============ */
+let editDayId=null;
+function EditDay(){
+  const p=DB.programs.find(x=>x.id===editDayId);
+  const w=el("div");
+  if(!p){w.appendChild(el("div","empty","Нет дня"));return w;}
+  w.appendChild(el("div","eyebrow",esc(p.name)));
+  const c=el("div","card");
+  if(!p.exercises.length)c.appendChild(el("div","del","Пока пусто — добавь упражнение"));
+  p.exercises.forEach((e,i)=>{
+    const row=el("div","edit-ex");
+    const tgt=e.type==="time"?`${e.rmin}-${e.rmax}с`:e.type==="reps"?`${e.rmin}-${e.rmax} повт`:`${e.sets}×${e.rmin}-${e.rmax}`;
+    row.innerHTML=`<span class="handle" data-up>▲</span><span class="handle" data-dn>▼</span>
+      <div class="nm">${esc(e.name)}<div class="ty">${TYPE[e.type]} · ${esc(tgt)}${e.rpe?` · RPE ${esc(e.rpe)}`:""}</div></div>
+      <span class="x" data-x>✕</span>`;
+    row.querySelector(".nm").onclick=()=>exForm(p,e);
+    row.querySelector("[data-x]").onclick=()=>{if(confirm("Убрать «"+e.name+"»?")){p.exercises.splice(i,1);save();render();}};
+    row.querySelector("[data-up]").onclick=()=>{if(i>0){[p.exercises[i-1],p.exercises[i]]=[p.exercises[i],p.exercises[i-1]];save();render();}};
+    row.querySelector("[data-dn]").onclick=()=>{if(i<p.exercises.length-1){[p.exercises[i+1],p.exercises[i]]=[p.exercises[i],p.exercises[i+1]];save();render();}};
+    c.appendChild(row);
+  });
+  w.appendChild(c);
+  const add=el("button","addex","＋ Добавить упражнение");
+  add.onclick=()=>exForm(p,null);
+  w.appendChild(add);
+  return w;
+}
+
+function exForm(p,e){
+  const isNew=!e;
+  const d=e||{name:"",type:"weighted",sets:4,rmin:8,rmax:12,rpe:"",note:""};
+  sheet(`<h2>${isNew?"Новое упражнение":"Упражнение"}</h2>
+    <div class="fl"><label>Название</label><input id="f_name" value="${esc(d.name)}" placeholder="Напр. Жим лёжа"></div>
+    <div class="fl"><label>Тип</label><div class="seg" id="f_type">
+      <button data-t="weighted" class="${d.type==="weighted"?"on":""}">вес × повт</button>
+      <button data-t="reps" class="${d.type==="reps"?"on":""}">повторы</button>
+      <button data-t="time" class="${d.type==="time"?"on":""}">время</button>
+    </div></div>
+    <div class="fl"><div class="two">
+      <div><label>Подходов</label><input id="f_sets" type="number" inputmode="numeric" value="${d.sets}"></div>
+      <div><label id="lab_rpe">RPE</label><input id="f_rpe" value="${esc(d.rpe)}" placeholder="напр. 7"></div>
+    </div></div>
+    <div class="fl"><div class="two">
+      <div><label id="lab_min">Повт. от</label><input id="f_min" type="number" inputmode="numeric" value="${d.rmin}"></div>
+      <div><label id="lab_max">Повт. до</label><input id="f_max" type="number" inputmode="numeric" value="${d.rmax}"></div>
+    </div></div>
+    <div class="fl"><label>Заметка (необязательно)</label><textarea id="f_note" placeholder="Техника, акценты…">${esc(d.note)}</textarea></div>
+    <button class="bigbtn" id="f_save">${isNew?"Добавить":"Сохранить"}</button>`);
+  let type=d.type;
+  const syncLabels=()=>{
+    const isT=type==="time";
+    $("#lab_min").textContent=isT?"Секунд от":"Повт. от";
+    $("#lab_max").textContent=isT?"Секунд до":"Повт. до";
+  };
+  syncLabels();
+  $("#f_type").querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    type=b.dataset.t;$("#f_type").querySelectorAll("button").forEach(x=>x.classList.remove("on"));b.classList.add("on");syncLabels();
+  });
+  $("#f_save").onclick=()=>{
+    const name=$("#f_name").value.trim();if(!name){toast("Впиши название");return;}
+    const sets=Math.max(1,+$("#f_sets").value||1);
+    const rmin=+$("#f_min").value||0, rmax=+$("#f_max").value||rmin;
+    const obj={name,type,sets,rmin,rmax,rpe:$("#f_rpe").value.trim(),note:$("#f_note").value.trim()};
+    if(isNew){obj.id=uid();obj.last=[];p.exercises.push(obj);}
+    else{Object.assign(e,obj);}
+    save();closeSheet();render();
+  };
+}
+
+/* ============ SESSION ============ */
+function startSession(p){
+  session={programId:p.id,name:p.name,date:todayISO(),entries:p.exercises.map(e=>{
+    const sets=[];
+    for(let i=0;i<e.sets;i++){
+      const prev=e.last&&e.last[i]?e.last[i]:(e.last&&e.last.length?e.last[e.last.length-1]:null);
+      sets.push({
+        w:prev&&prev.w!=null?prev.w:(e.type==="weighted"?0:null),
+        r:prev&&prev.r!=null?prev.r:(e.type!=="time"?e.rmin:null),
+        t:prev&&prev.t!=null?prev.t:(e.type==="time"?e.rmin:null),
+        done:false
+      });
+    }
+    return {exId:e.id,name:e.name,type:e.type,rmin:e.rmin,rmax:e.rmax,rpe:e.rpe,note:e.note,sets};
+  })};
+  go("session");
+}
+
+function bestE1RM(exName){
+  let best=0;
+  DB.history.forEach(s=>s.entries.forEach(en=>{
+    if(en.name===exName)en.sets.forEach(st=>{if(st.done){const v=e1rm(st.w||0,st.r||0);if(v>best)best=v;}});
+  }));
+  return best;
+}
+
+function Session(){
+  const w=el("div");
+  session.entries.forEach((en,ei)=>{
+    const ex=el("div","card ex");
+    const tgt=[];
+    if(en.type==="time")tgt.push(`<b>${en.sets.length}</b>×${en.rmin}-${en.rmax}с`);
+    else tgt.push(`<b>${en.sets.length}</b>×${en.rmin}-${en.rmax}`);
+    if(en.rpe)tgt.push(`RPE ${esc(en.rpe)}`);
+    const head=el("div","head",`<h3>${esc(en.name)}</h3><div class="target">${tgt.join(" · ")}</div>`);
+    const menu=el("button","menu","⋯");menu.onclick=()=>sessionExMenu(ei);head.appendChild(menu);
+    ex.appendChild(head);
+    if(en.note)ex.appendChild(el("div","note",esc(en.note)));
+    en.sets.forEach((st,si)=>ex.appendChild(setRow(en,ei,st,si)));
+    const foot=el("div","exfoot");
+    const addS=el("button","minibtn","＋ Подход");
+    addS.onclick=()=>{const last=en.sets[en.sets.length-1]||{};en.sets.push({w:last.w??0,r:last.r??en.rmin,t:last.t??(en.type==="time"?en.rmin:null),done:false});render();};
+    const delS=el("button","minibtn","− Подход");
+    delS.onclick=()=>{if(en.sets.length>1){en.sets.pop();render();}};
+    foot.appendChild(addS);foot.appendChild(delS);ex.appendChild(foot);
+    w.appendChild(ex);
+  });
+  const fin=el("button","bigbtn","Завершить тренировку");
+  fin.onclick=finishSession;w.appendChild(fin);
+  return w;
+}
+
+function setRow(en,ei,st,si){
+  const row=el("div","setrow"+(st.done?" done":""));
+  const no=el("div","setno num",si+1);
+  row.appendChild(no);
+  if(en.type==="weighted"){
+    row.appendChild(stepField("кг",st.w,2.5,v=>{st.w=v;},"weight"));
+    row.appendChild(el("div","times","×"));
+    row.appendChild(stepField("повт",st.r,1,v=>st.r=v,"rep"));
+    const chk=el("button","check",st.done?"✓":"○");
+    chk.onclick=()=>toggleSet(en,st,row,no,chk);
+    row.appendChild(chk);
+  }else if(en.type==="reps"){
+    row.appendChild(stepField("повторы",st.r,1,v=>st.r=v,"rep"));
+    const chk=el("button","check",st.done?"✓":"○");
+    chk.onclick=()=>toggleSet(en,st,row,no,chk);
+    row.appendChild(chk);
+  }else{ // time
+    const f=stepField("секунды",st.t,5,v=>st.t=v,"sec");
+    row.appendChild(f);
+    const play=el("button","check play",st.done?"✓":"▶");
+    play.onclick=()=>{
+      if(st.done){st.done=false;row.classList.remove("done");play.textContent="▶";renderSetNo(row,st);return;}
+      runHoldTimer(en,st,si,()=>{
+        st.done=true;row.classList.add("done");play.textContent="✓";renderSetNo(row,st);
+        const inp=f.querySelector("input");if(inp)inp.value=st.t;
+        startRest();
+      });
+    };
+    row.appendChild(play);
+  }
+  return row;
+}
+
+function toggleSet(en,st,row,no,chk){
+  st.done=!st.done;
+  row.classList.toggle("done",st.done);
+  chk.textContent=st.done?"✓":"○";
+  if(st.done){
+    vibe(15);
+    const pr=checkPR(en,st);
+    startRest();
+    if(pr)toast("🏆 Личный рекорд!",true);
+  }
+  renderSetNo(row,st);
+}
+function renderSetNo(row,st){const n=row.querySelector(".setno");if(n)n.style.color=st.done?"var(--accent)":"";}
+
+function stepField(label,val,step,onCh,kind){
+  const f=el("div","field");
+  f.appendChild(el("label",null,label));
+  const sp=el("div","stepper");
+  const minus=el("button",null,"−");
+  const inp=el("input","num");inp.type="text";inp.inputMode="decimal";inp.value=val==null?"":val;
+  const plus=el("button",null,"+");
+  const get=()=>{let v=parseFloat(inp.value.replace(",","."));return isNaN(v)?0:v;};
+  const set=v=>{v=Math.max(0,Math.round(v*100)/100);inp.value=v;onCh(v);};
+  minus.onclick=()=>set(get()-step);
+  plus.onclick=()=>set(get()+step);
+  inp.onchange=()=>set(get());
+  inp.onfocus=()=>inp.select();
+  sp.appendChild(minus);sp.appendChild(inp);sp.appendChild(plus);
+  f.appendChild(sp);
+  return f;
+}
+
+function checkPR(en,st){
+  if(en.type!=="weighted")return false;
+  const prev=bestE1RM(en.name);
+  const now=e1rm(st.w||0,st.r||0);
+  return prev>0 && now>prev+0.01;
+}
+
+function sessionExMenu(ei){
+  const en=session.entries[ei];
+  sheet(`<h2>${esc(en.name)}</h2>
+    <button class="bigbtn ghost" id="s1">Заметка по технике</button>
+    <button class="bigbtn danger" id="s2" style="margin-top:8px">Убрать из тренировки</button>`);
+  $("#s1").onclick=()=>{closeSheet();sheet(`<h2>${esc(en.name)}</h2><div style="white-space:pre-line;color:var(--muted);font-size:14px;line-height:1.6">${en.note?esc(en.note):"Заметки нет."}</div>`);};
+  $("#s2").onclick=()=>{closeSheet();session.entries.splice(ei,1);render();};
+}
+
+function finishSession(){
+  // keep only sets that were done
+  const entries=session.entries.map(en=>({
+    name:en.name,type:en.type,sets:en.sets.filter(s=>s.done).map(s=>({w:s.w,r:s.r,t:s.t,done:true}))
+  })).filter(en=>en.sets.length);
+  if(!entries.length){if(!confirm("Не отмечено ни одного подхода. Всё равно выйти?"))return;session=null;go("home");return;}
+  const rec={id:uid(),programId:session.programId,name:session.name,date:session.date,entries};
+  DB.history.unshift(rec);
+  // update "last" on program exercises for autofill next time
+  const p=DB.programs.find(x=>x.id===session.programId);
+  if(p){
+    session.entries.forEach(en=>{
+      const pe=p.exercises.find(x=>x.id===en.exId);
+      if(pe){const done=en.sets.filter(s=>s.done);if(done.length)pe.last=done.map(s=>{
+        if(en.type==="weighted")return{w:s.w,r:s.r};if(en.type==="reps")return{r:s.r};return{t:s.t};
+      });}
+    });
+  }
+  save();
+  const n=entries.reduce((a,e)=>a+e.sets.length,0);
+  session=null;
+  go("home");
+  toast("Сохранено · "+n+" подходов");
+}
+
+/* ============ REST TIMER ============ */
+let restInt=null,restLeft=0,restTotal=0;
+function startRest(){
+  restTotal=restLeft=DB.settings.rest||90;
+  $("#rest").classList.add("on");updateRest();
+  clearInterval(restInt);
+  restInt=setInterval(()=>{
+    restLeft--;updateRest();
+    if(restLeft<=0){clearInterval(restInt);vibe([60,40,60]);setTimeout(stopRest,400);}
+  },1000);
+}
+function updateRest(){
+  $("#restT").textContent=fmtTime(Math.max(0,restLeft));
+  $("#restProg").style.width=(100*(restTotal-restLeft)/restTotal)+"%";
+}
+function stopRest(){clearInterval(restInt);$("#rest").classList.remove("on");}
+$("#restSkip").onclick=stopRest;
+$("#restAdd").onclick=()=>{restLeft+=15;restTotal+=15;updateRest();};
+
+/* ============ HOLD TIMER (timed exercises) ============ */
+let AC=null;
+function beep(freq,dur){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==="suspended")AC.resume();
+    const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
+    o.type="sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t);o.connect(g);g.connect(AC.destination);
+    g.gain.exponentialRampToValueAtTime(0.28,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t);o.stop(t+dur+0.03);
+  }catch(e){}
+}
+let htRAF=null;
+function runHoldTimer(en,st,si,onDone){
+  try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();}catch(e){}
+  const prep=DB.settings.prep==null?5:DB.settings.prep;
+  const hold=Math.max(1,st.t||en.rmax||20);
+  const ov=$("#htimer"),arc=$("#htArc"),big=$("#htBig"),lbl=$("#htLbl");
+  const R=88,C=2*Math.PI*R;
+  arc.style.strokeDasharray=C;
+  $("#htEx").textContent=en.name;
+  $("#htSet").textContent="Подход "+(si+1)+" · цель "+hold+"с";
+  ov.classList.add("on");
+  let phase=prep>0?"prep":"hold";
+  let paused=false,pauseStart=0,pausedTotal=0,start=performance.now(),lastBeep=-1;
+  const setArc=f=>{arc.style.strokeDashoffset=C*(1-Math.max(0,Math.min(1,f)));};
+  function stop(){cancelAnimationFrame(htRAF);htRAF=null;ov.classList.remove("on");}
+  function finish(secs){stop();st.t=Math.round(secs);vibe([70,50,140]);beep(900,0.22);onDone();}
+  function tick(now){
+    if(paused){htRAF=requestAnimationFrame(tick);return;}
+    const elapsed=(now-start-pausedTotal)/1000;
+    if(phase==="prep"){
+      const rem=prep-elapsed,rc=Math.ceil(rem);
+      big.textContent=Math.max(0,rc);big.style.color="var(--warn)";
+      arc.style.stroke="var(--warn)";lbl.textContent="приготовься";
+      setArc(rem/prep);
+      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;beep(640,0.08);vibe(20);}
+      if(rem<=0){phase="hold";start=now;pausedTotal=0;lastBeep=-1;beep(900,0.16);vibe(45);}
+    }else{
+      const rem=hold-elapsed,rc=Math.ceil(rem);
+      big.textContent=Math.max(0,rc);big.style.color="var(--accent)";
+      arc.style.stroke="var(--accent)";lbl.textContent=en.name;
+      setArc(rem/hold);
+      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;beep(640,0.08);vibe(20);}
+      if(rem<=0){finish(hold);return;}
+    }
+    htRAF=requestAnimationFrame(tick);
+  }
+  $("#htCancel").onclick=stop;
+  $("#htPause").textContent="Пауза";
+  $("#htPause").onclick=()=>{
+    paused=!paused;
+    if(paused){pauseStart=performance.now();$("#htPause").textContent="Продолжить";}
+    else{pausedTotal+=performance.now()-pauseStart;$("#htPause").textContent="Пауза";}
+  };
+  $("#htDone").onclick=()=>{
+    if(phase==="prep"){phase="hold";start=performance.now();pausedTotal=0;paused=false;$("#htPause").textContent="Пауза";lastBeep=-1;beep(900,0.16);return;}
+    const elapsed=(performance.now()-start-pausedTotal)/1000;
+    finish(Math.max(1,Math.min(hold,elapsed)));
+  };
+  paused=false;
+  htRAF=requestAnimationFrame(tick);
+}
+
+/* ============ PROGRESS ============ */
+function allExNames(){
+  const set=new Set();
+  DB.programs.forEach(p=>p.exercises.forEach(e=>{if(e.type!=="time")set.add(e.name);}));
+  DB.history.forEach(s=>s.entries.forEach(e=>{if(e.type!=="time")set.add(e.name);}));
+  return [...set].sort((a,b)=>a.localeCompare(b,"ru"));
+}
+function exSeries(name){
+  // one point per session: best e1rm (weighted) or max reps
+  const pts=[];
+  [...DB.history].reverse().forEach(s=>{
+    let best=0,type="weighted",vol=0;
+    s.entries.forEach(en=>{if(en.name===name){type=en.type;en.sets.forEach(st=>{
+      const v=en.type==="weighted"?e1rm(st.w||0,st.r||0):(en.type==="reps"?(st.r||0):(st.t||0));
+      if(v>best)best=v; vol+=(en.type==="weighted"?(st.w||0)*(st.r||0):0);
+    });}});
+    if(best>0)pts.push({date:s.date,val:Math.round(best*10)/10,vol,type});
+  });
+  return pts;
+}
+function Progress(){
+  const w=el("div");
+  const names=allExNames();
+  if(!names.length){return emptyState("📈","Пока нет упражнений","Начни тренировку — здесь появятся графики.");}
+  if(!progressEx||!names.includes(progressEx))progressEx=names[0];
+  const sel=el("select","pick");
+  names.forEach(n=>{const o=el("option",null,esc(n));o.value=n;if(n===progressEx)o.selected=true;sel.appendChild(o);});
+  sel.onchange=()=>{progressEx=sel.value;render();};
+  w.appendChild(sel);
+  const pts=exSeries(progressEx);
+  if(!pts.length){w.appendChild(emptyState("🗓","Нет записей","Отметь это упражнение на тренировке."));return w;}
+  const type=pts[0].type;
+  const unit=type==="weighted"?"e1RM":type==="reps"?"повт":"сек";
+  const max=Math.max(...pts.map(p=>p.val)), first=pts[0].val, last=pts[pts.length-1].val;
+  const delta=last-first;
+  const sr=el("div","statrow");
+  sr.appendChild(stat(type==="weighted"?Math.round(max)+"<small> кг</small>":max+`<small> ${unit}</small>`,"Лучший "+unit));
+  sr.appendChild(stat((delta>=0?"+":"")+Math.round(delta*10)/10,"Динамика"));
+  sr.appendChild(stat(pts.length,"Сессий"));
+  w.appendChild(sr);
+  const cw=el("div","chartwrap");
+  cw.appendChild(el("h3",null,(type==="weighted"?"Расчётный 1ПМ":type==="reps"?"Макс. повторы":"Макс. время")+" по тренировкам"));
+  cw.appendChild(lineChart(pts));
+  w.appendChild(cw);
+  const list=el("div","card");
+  [...pts].reverse().forEach(p=>{
+    const r=el("div","hbar");
+    const vtxt=type==="weighted"?Math.round(p.val)+" кг"+(p.vol?` · ${p.vol} кг·повт`:""):p.val+" "+unit;
+    r.innerHTML=`<span class="d">${fmtDate(p.date)}</span><span class="val">${vtxt}</span>`;
+    list.appendChild(r);
+  });
+  w.appendChild(list);
+  return w;
+}
+function stat(v,k){return el("div","stat",`<div class="v num">${v}</div><div class="k">${esc(k)}</div>`);}
+function lineChart(pts){
+  const W=520,H=170,pad=24,padR=10,padT=14,padB=22;
+  const xs=pts.map((_,i)=>pts.length>1?pad+i*(W-pad-padR)/(pts.length-1):W/2);
+  const vals=pts.map(p=>p.val);
+  let mn=Math.min(...vals),mx=Math.max(...vals);if(mn===mx){mn-=1;mx+=1;}
+  const Y=v=>padT+(H-padT-padB)*(1-(v-mn)/(mx-mn));
+  const pathD=pts.map((p,i)=>(i?"L":"M")+xs[i].toFixed(1)+" "+Y(p.val).toFixed(1)).join(" ");
+  const areaD=pathD+` L ${xs[xs.length-1].toFixed(1)} ${H-padB} L ${xs[0].toFixed(1)} ${H-padB} Z`;
+  const svg=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(182,244,54,.25)"/><stop offset="1" stop-color="rgba(182,244,54,0)"/>
+    </linearGradient></defs>
+    <line x1="${pad}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="var(--line)"/>
+    <path d="${areaD}" fill="url(#g)"/>
+    <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p,i)=>`<circle cx="${xs[i].toFixed(1)}" cy="${Y(p.val).toFixed(1)}" r="${i===pts.length-1?4:3}" fill="${i===pts.length-1?'var(--accent)':'var(--bg)'}" stroke="var(--accent)" stroke-width="2"/>`).join("")}
+    <text x="${pad}" y="11" fill="var(--faint)" font-size="11" font-weight="700">${Math.round(mx)}</text>
+    <text x="${pad}" y="${H-padB-2}" fill="var(--faint)" font-size="11" font-weight="700">${Math.round(mn)}</text>
+  </svg>`;
+  return el("div",null,svg).firstChild;
+}
+
+/* ============ HISTORY ============ */
+function History(){
+  if(!DB.history.length)return emptyState("🗓","Тренировок пока нет","Заверши первую — она появится здесь.");
+  const w=el("div");
+  DB.history.forEach(s=>{
+    const c=el("div","card hsession");
+    const tot=s.entries.reduce((a,e)=>a+e.sets.length,0);
+    const head=el("div","h",`<div><div class="n">${esc(s.name)}</div></div><div class="d num">${fmtDate(s.date)} · ${tot} подх.</div>`);
+    c.appendChild(head);
+    s.entries.forEach(en=>{
+      let s2;
+      if(en.type==="weighted")s2=en.sets.map(x=>`${x.w||0}×${x.r||0}`).join(", ");
+      else if(en.type==="reps")s2=en.sets.map(x=>`${x.r||0}`).join(", ")+" повт";
+      else s2=en.sets.map(x=>`${x.t||0}с`).join(", ");
+      c.appendChild(el("div","e",`<span class="nm">${esc(en.name)}</span><span class="s num">${s2}</span>`));
+    });
+    const del=el("button","del","Удалить запись");
+    del.onclick=()=>{if(confirm("Удалить эту тренировку?")){DB.history=DB.history.filter(x=>x.id!==s.id);save();render();}};
+    c.appendChild(del);
+    w.appendChild(c);
+  });
+  return w;
+}
+
+/* ============ MORE ============ */
+function More(){
+  const w=el("div");
+  w.appendChild(el("div","eyebrow","Таймер отдыха"));
+  const c=el("div","card");c.style.padding="14px";
+  const cur=DB.settings.rest||90;
+  c.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1;font-weight:700">По умолчанию</div>
+    <div class="num" id="restVal" style="font-size:18px;font-weight:800;color:var(--accent)">${fmtTime(cur)}</div></div>
+    <div class="seg" id="restSeg" style="margin-top:10px">
+    ${[60,75,90,120,150].map(s=>`<button data-s="${s}" class="${s===cur?'on':''}">${s>=60?fmtTime(s):s+'с'}</button>`).join("")}</div>`;
+  w.appendChild(c);
+  c.querySelectorAll("#restSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.rest=+b.dataset.s;save();
+    c.querySelectorAll("#restSeg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+    $("#restVal").textContent=fmtTime(DB.settings.rest);
+  });
+
+  w.appendChild(el("div","eyebrow","Отсчёт перед упражнением на время"));
+  const pc=el("div","card");pc.style.padding="14px";
+  const curp=DB.settings.prep==null?5:DB.settings.prep;
+  pc.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1;font-weight:700">«Приготовься»</div>
+    <div class="num" id="prepVal" style="font-size:18px;font-weight:800;color:var(--accent)">${curp===0?'выкл':curp+' с'}</div></div>
+    <div class="seg" id="prepSeg" style="margin-top:10px">
+    ${[0,3,5,10].map(s=>`<button data-s="${s}" class="${s===curp?'on':''}">${s===0?'выкл':s+'с'}</button>`).join("")}</div>`;
+  w.appendChild(pc);
+  pc.querySelectorAll("#prepSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.prep=+b.dataset.s;save();
+    pc.querySelectorAll("#prepSeg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+    $("#prepVal").textContent=(DB.settings.prep===0?"выкл":DB.settings.prep+" с");
+  });
+
+  w.appendChild(el("div","eyebrow","Данные"));
+  const d=el("div","card");d.style.padding="12px";
+  const exp=el("button","bigbtn ghost","Экспорт в файл (JSON)");
+  exp.onclick=exportData;
+  const imp=el("button","bigbtn ghost","Импорт из файла");imp.style.marginTop="8px";
+  imp.onclick=importData;
+  d.appendChild(exp);d.appendChild(imp);
+  const meta=el("div",null,`<div style="color:var(--faint);font-size:12px;text-align:center;margin-top:10px">
+    ${DB.history.length} тренировок · ${DB.programs.length} дней в памяти браузера</div>`);
+  d.appendChild(meta);
+  w.appendChild(d);
+
+  w.appendChild(el("div","eyebrow","Опасная зона"));
+  const dz=el("div","card");dz.style.padding="12px";
+  const reset=el("button","bigbtn danger","Сбросить к исходной программе");
+  reset.onclick=()=>{if(confirm("Сбросить ВСЁ к стартовой программе? История и изменения удалятся.")){DB=seedData();save();go("home");}};
+  dz.appendChild(reset);
+  w.appendChild(dz);
+
+  w.appendChild(el("div",null,`<div style="text-align:center;color:var(--faint);font-size:12px;margin-top:18px">Журнал силовых · работает офлайн</div>`));
+  return w;
+}
+function exportData(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="strength-backup-"+todayISO()+".json";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast("Файл выгружен");
+}
+function importData(){
+  const inp=document.createElement("input");inp.type="file";inp.accept="application/json,.json";
+  inp.onchange=()=>{const f=inp.files[0];if(!f)return;const fr=new FileReader();
+    fr.onload=()=>{try{const d=JSON.parse(fr.result);if(!d.programs)throw 0;
+      if(confirm("Заменить текущие данные импортом?")){DB=d;if(!DB.settings)DB.settings={rest:90};save();go("home");toast("Импортировано");}}
+      catch(e){toast("Не похоже на бэкап");}};
+    fr.readAsText(f);};
+  inp.click();
+}
+
+function emptyState(em,t,p){return el("div","empty",`<div class="em">${em}</div><h3>${esc(t)}</h3><p>${esc(p)}</p>`);}
+
+/* ============ modal ============ */
+function sheet(html){$("#sheet").innerHTML=html;$("#modal").classList.add("on");}
+function closeSheet(){$("#modal").classList.remove("on");}
+$("#modal").onclick=e=>{if(e.target.id==="modal")closeSheet();};
+
+/* ============ boot ============ */
+load();render();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+</script>
+</body>
+</html>
