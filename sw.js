@@ -1,5 +1,5 @@
 // Журнал силовых — service worker
-const CACHE = "strength-v2";
+const CACHE = "strength-v3";
 const ASSETS = [
   "./",
   "./index.html",
