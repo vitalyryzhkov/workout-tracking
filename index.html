@@ -636,10 +636,24 @@ function checkPR(en,st){
 function sessionExMenu(ei){
   const en=session.entries[ei];
   sheet(`<h2>${esc(en.name)}</h2>
-    <button class="bigbtn ghost" id="s1">Заметка по технике</button>
+    <button class="bigbtn ghost" id="s1">${en.note?"Заметка по технике":"Добавить заметку по технике"}</button>
     <button class="bigbtn danger" id="s2" style="margin-top:8px">Убрать из тренировки</button>`);
-  $("#s1").onclick=()=>{closeSheet();sheet(`<h2>${esc(en.name)}</h2><div style="white-space:pre-line;color:var(--muted);font-size:14px;line-height:1.6">${en.note?esc(en.note):"Заметки нет."}</div>`);};
+  $("#s1").onclick=()=>{closeSheet();sessionNoteEdit(en);};
   $("#s2").onclick=()=>{closeSheet();session.entries.splice(ei,1);render();};
+}
+function sessionNoteEdit(en){
+  sheet(`<h2>${esc(en.name)}</h2>
+    <div class="fl"><label>Заметка по технике</label>
+      <textarea id="n_note" placeholder="Техника, акценты, ощущения…">${esc(en.note||"")}</textarea></div>
+    <button class="bigbtn" id="n_save">Сохранить</button>`);
+  $("#n_save").onclick=()=>{
+    const v=$("#n_note").value.trim();
+    en.note=v;
+    const p=DB.programs.find(x=>x.id===session.programId);
+    if(p){const pe=p.exercises.find(x=>x.id===en.exId);if(pe)pe.note=v;}
+    save();closeSheet();render();
+    toast(v?"Заметка сохранена":"Заметка очищена");
+  };
 }
 
 function finishSession(){
