@@ -681,24 +681,46 @@ function finishSession(){
   toast("Сохранено · "+n+" подходов");
 }
 
+/* ============ WAKE LOCK (keep screen on during timers) ============ */
+let wakeLock=null;
+async function requestWake(){
+  try{ if("wakeLock" in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release",()=>{wakeLock=null;}); } }catch(e){}
+}
+function releaseWake(){ try{ if(wakeLock){wakeLock.release();wakeLock=null;} }catch(e){} }
+function timersActive(){ return $("#rest").classList.contains("on")||$("#htimer").classList.contains("on"); }
+
 /* ============ REST TIMER ============ */
-let restInt=null,restLeft=0,restTotal=0;
+let restInt=null,restEndAt=0,restTotal=0;
+function restRemaining(){return Math.max(0,Math.round((restEndAt-Date.now())/1000));}
 function startRest(){
-  restTotal=restLeft=DB.settings.rest||90;
-  $("#rest").classList.add("on");updateRest();
+  restTotal=DB.settings.rest||90;
+  if(restTotal<=0){return;}
+  restEndAt=Date.now()+restTotal*1000;
+  $("#rest").classList.add("on");updateRest();requestWake();
   clearInterval(restInt);
   restInt=setInterval(()=>{
-    restLeft--;updateRest();
-    if(restLeft<=0){clearInterval(restInt);vibe([60,40,60]);setTimeout(stopRest,400);}
-  },1000);
+    if(restRemaining()<=0){clearInterval(restInt);restDone();}
+    else updateRest();
+  },250);
 }
 function updateRest(){
-  $("#restT").textContent=fmtTime(Math.max(0,restLeft));
-  $("#restProg").style.width=(100*(restTotal-restLeft)/restTotal)+"%";
+  const left=restRemaining();
+  $("#restT").textContent=fmtTime(left);
+  $("#restProg").style.width=(100*(restTotal-left)/restTotal)+"%";
 }
-function stopRest(){clearInterval(restInt);$("#rest").classList.remove("on");}
+function restDone(){vibe([60,40,60]);beep(880,0.2);setTimeout(stopRest,500);}
+function stopRest(){clearInterval(restInt);$("#rest").classList.remove("on");if(!timersActive())releaseWake();}
 $("#restSkip").onclick=stopRest;
-$("#restAdd").onclick=()=>{restLeft+=15;restTotal+=15;updateRest();};
+$("#restAdd").onclick=()=>{restEndAt+=15000;restTotal+=15;updateRest();};
+
+/* re-sync when returning to the app (iOS freezes JS in background) */
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible")return;
+  if(timersActive())requestWake();
+  if($("#rest").classList.contains("on")){
+    if(restRemaining()<=0){clearInterval(restInt);restDone();}else updateRest();
+  }
+});
 
 /* ============ HOLD TIMER (timed exercises) ============ */
 let AC=null;
@@ -724,11 +746,11 @@ function runHoldTimer(en,st,si,onDone){
   arc.style.strokeDasharray=C;
   $("#htEx").textContent=en.name;
   $("#htSet").textContent="Подход "+(si+1)+" · цель "+hold+"с";
-  ov.classList.add("on");
+  ov.classList.add("on");requestWake();
   let phase=prep>0?"prep":"hold";
   let paused=false,pauseStart=0,pausedTotal=0,start=performance.now(),lastBeep=-1;
   const setArc=f=>{arc.style.strokeDashoffset=C*(1-Math.max(0,Math.min(1,f)));};
-  function stop(){cancelAnimationFrame(htRAF);htRAF=null;ov.classList.remove("on");}
+  function stop(){cancelAnimationFrame(htRAF);htRAF=null;ov.classList.remove("on");if(!timersActive())releaseWake();}
   function finish(secs){stop();st.t=Math.round(secs);vibe([70,50,140]);beep(900,0.22);onDone();}
   function tick(now){
     if(paused){htRAF=requestAnimationFrame(tick);return;}
