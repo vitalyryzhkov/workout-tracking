@@ -419,7 +419,10 @@ const TYPE={weighted:"вес × повт",reps:"повторы",time:"время
 
 /* ============ router ============ */
 let view="home", session=null, progressEx=null;
-function go(v){view=v;render();window.scrollTo(0,0);}
+function go(v){
+  if(pendingUpdate&&!session&&!swReloaded){swReloaded=true;location.reload();return;}
+  view=v;render();window.scrollTo(0,0);
+}
 
 function render(){
   renderTop(); renderNav();
@@ -1046,7 +1049,23 @@ $("#modal").onclick=e=>{if(e.target.id==="modal")closeSheet();};
 
 /* ============ boot ============ */
 load();render();
-if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+let pendingUpdate=false,swReloaded=false;
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(reg=>{
+      reg.update();
+      setInterval(()=>reg.update().catch(()=>{}),30*60*1000);
+    }).catch(()=>{});
+    navigator.serviceWorker.addEventListener("controllerchange",()=>{
+      if(swReloaded)return;
+      if(session){pendingUpdate=true;}      // не перезагружаем посреди тренировки
+      else{swReloaded=true;location.reload();}
+    });
+  });
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible")navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-// Журнал силовых — service worker
-const CACHE = "strength-v7";
+// Тренировки — service worker
+const CACHE = "strength-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,14 +19,29 @@ self.addEventListener("activate", e => {
   );
 });
 
-// cache-first for app shell, network fallback
 self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET") return;
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
+
+  if (isHTML) {
+    // network-first: свежий index.html при сети, кэш — офлайн
+    e.respondWith(
+      fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put("./index.html", copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then(h => h || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // прочие ресурсы (иконки, manifest): cache-first
   e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+    caches.match(req).then(hit => hit || fetch(req).then(res => {
       const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+      caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       return res;
-    }).catch(() => caches.match("./index.html")))
+    }).catch(() => hit))
   );
 });
