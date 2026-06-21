@@ -312,7 +312,7 @@ function seedData(){
       ex("Боковая планка","time",3,20,30,"",[T(25),T(25),T(25)],"На каждую сторону"),
       ex("Dead bug","reps",3,6,8,"6",[R(8),R(8),R(8)],"По 6–8 на сторону")
     ]},
-    {id:uid(),name:"Заминка / Мобилити",exercises:[
+    {id:uid(),name:"Заминка / Мобилити",noLog:true,exercises:[
       ex("Растяжка грудных у стены","time",2,30,40,"",[T(35),T(35)],"Ладонь на стену, корпус чуть разворачиваешь, грудь раскрывается. НЕ прогибаться. Дыши спокойно."),
       ex("Растяжка широчайших стоя","time",2,30,40,"",[T(35),T(35)],"Возьми верхний блок/перекладину, слегка отсядь назад, спина ровная. Почувствуй растяжение под рёбрами."),
       ex("Кот–корова (мягкий)","reps",1,10,15,"",[R(12)],"На четвереньках. Вдох — грудь вперёд, выдох — спина слегка округляется. Без максимальных амплитуд."),
@@ -321,7 +321,57 @@ function seedData(){
       ex("Диафрагмальное дыхание","time",1,90,120,"",[T(90)],"Лёжа на спине, рука на груди, рука на животе. Дышишь так, чтобы грудь двигалась больше, чем живот. 8–10 дыханий.")
     ]}
   ];
-  return {programs,history:[],settings:{rest:90,prep:5}};
+  programs.push(...workBreakPrograms());
+  programs.push(warmupProgram());
+  return {programs,history:[],settings:{rest:90,prep:5,workBreaksAdded:true,warmupAdded:true}};
+}
+
+function workBreakPrograms(){
+  const ex=(name,type,sets,rmin,rmax,note,last)=>({id:uid(),name,type,sets,rmin,rmax,rpe:"",note:note||"",last:last||[]});
+  const R=r=>({r}),T=t=>({t});
+  return [
+    {id:uid(),name:"Перерыв · Экспресс 5 мин",noLog:true,exercises:[
+      ex("Пройтись вокруг автобуса","time",1,60,60,"1 круг (~1 мин). Разгоняет кровь.",[T(60)]),
+      ex("Прогиб назад","reps",1,6,6,"",[R(6)]),
+      ex("Наклоны в стороны","time",2,20,20,"По 20 сек на каждую сторону",[T(20),T(20)]),
+      ex("Круги плечами + раскрытие груди","time",1,40,40,"Круги плечами назад, затем руки в замок за спиной",[T(40)]),
+      ex("Подъёмы на носки","reps",1,20,20,"",[R(20)]),
+      ex("Приседания","reps",1,10,10,"",[R(10)])
+    ]},
+    {id:uid(),name:"Перерыв · Полная 15 мин",noLog:true,exercises:[
+      ex("Пройтись 2 круга вокруг автобуса","time",1,120,120,"Разогрев",[T(120)]),
+      ex("Марш на месте, высокое колено","time",1,30,30,"",[T(30)]),
+      ex("Круги стопами","reps",2,10,10,"По 10 на каждую стопу",[R(10),R(10)]),
+      ex("Прогиб назад","reps",1,8,8,"",[R(8)]),
+      ex("Наклоны в стороны","time",2,30,30,"По 30 сек на сторону",[T(30),T(30)]),
+      ex("Скручивания корпуса стоя","reps",1,10,10,"",[R(10)]),
+      ex("Выпад с растяжкой бедра","time",2,30,30,"По 30 сек на каждую ногу",[T(30),T(30)]),
+      ex("«Четвёрка» на ягодицы","time",2,30,30,"По 30 сек, держась за автобус",[T(30),T(30)]),
+      ex("Растяжка груди","time",1,30,30,"",[T(30)]),
+      ex("Наклоны головы к плечу","time",2,20,20,"По 20 сек на сторону",[T(20),T(20)]),
+      ex("Растяжка предплечий","time",2,20,20,"По 20 сек на каждую руку",[T(20),T(20)]),
+      ex("Приседания","reps",1,15,15,"",[R(15)]),
+      ex("Подъёмы на носки","reps",1,20,20,"",[R(20)]),
+      ex("Сжатие ягодиц","reps",1,20,20,"",[R(20)]),
+      ex("Заминка — пройтись","time",1,60,60,"Восстановить дыхание",[T(60)])
+    ]}
+  ];
+}
+
+function warmupProgram(){
+  const ex=(name,type,sets,rmin,rmax,note,last)=>({id:uid(),name,type,sets,rmin,rmax,rpe:"",note:note||"",last:last||[]});
+  const R=r=>({r}),T=t=>({t});
+  return {id:uid(),name:"Разминка · Универсальная",noLog:true,exercises:[
+    ex("Лёгкий бег / марш на месте","time",1,60,60,"Поднять пульс",[T(60)]),
+    ex("Круги руками вперёд и назад","time",1,40,40,"",[T(40)]),
+    ex("Круги в плечах","time",1,30,30,"",[T(30)]),
+    ex("Наклоны и повороты корпуса","time",1,40,40,"",[T(40)]),
+    ex("Круги бёдрами / тазом","time",1,30,30,"",[T(30)]),
+    ex("Махи ногами","reps",2,10,10,"По 10 на каждую ногу",[R(10),R(10)]),
+    ex("Приседания без веса","reps",1,15,15,"",[R(15)]),
+    ex("Выпады на месте","reps",2,8,8,"По 8 на каждую ногу",[R(8),R(8)]),
+    ex("Вращения коленей и голеностопов","time",1,30,30,"",[T(30)])
+  ]};
 }
 
 let DB;
@@ -330,6 +380,25 @@ function load(){
   catch(e){DB=seedData();}
   if(!DB.settings)DB.settings={rest:90,prep:5};
   if(DB.settings.prep==null)DB.settings.prep=5;
+  if(!DB.settings.workBreaksAdded){
+    DB.programs.push(...workBreakPrograms());
+    DB.settings.workBreaksAdded=true;
+    save();
+  }
+  if(!DB.settings.warmupAdded){
+    DB.programs.push(warmupProgram());
+    DB.settings.warmupAdded=true;
+    save();
+  }
+  // default known warmup/cooldown/break days to "no history"
+  let changed=false;
+  DB.programs.forEach(p=>{
+    if(p.noLog===undefined){
+      if(/заминк|мобилит|перерыв|разминк/i.test(p.name)){p.noLog=true;changed=true;}
+      else {p.noLog=false;changed=true;}
+    }
+  });
+  if(changed)save();
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 
@@ -405,7 +474,7 @@ function Home(){
     const wgt=p.exercises.filter(e=>e.type==="weighted").length;
     const body=el("div","body");
     body.innerHTML=`<h2>${esc(p.name)}</h2>
-      <div class="meta"><span class="tag">${p.exercises.length} упр.</span>${wgt?`<span class="tag">${wgt} с весом</span>`:""}</div>
+      <div class="meta"><span class="tag">${p.exercises.length} упр.</span>${wgt?`<span class="tag">${wgt} с весом</span>`:""}${p.noLog?`<span class="tag" style="color:var(--muted)">без истории</span>`:""}</div>
       <div class="exlist">${esc(exNames)}</div>`;
     body.onclick=()=>openDayMenu(p);
     const row=el("div","row");
@@ -425,10 +494,12 @@ function Home(){
 function openDayMenu(p){
   sheet(`<h2>${esc(p.name)}</h2>
     <button class="bigbtn ghost" id="m1">Редактировать упражнения</button>
+    <button class="bigbtn ghost" id="m5" style="margin-top:8px">${p.noLog?"📊 Включить историю и прогресс":"🚫 Не вести историю (разминка)"}</button>
     <button class="bigbtn ghost" id="m2" style="margin-top:8px">Переименовать день</button>
     <button class="bigbtn ghost" id="m3" style="margin-top:8px">Дублировать день</button>
     <button class="bigbtn danger" id="m4" style="margin-top:8px">Удалить день</button>`);
   $("#m1").onclick=()=>{closeSheet();editDayId=p.id;go("editday");};
+  $("#m5").onclick=()=>{p.noLog=!p.noLog;save();closeSheet();render();toast(p.noLog?"День не пишется в историю":"День в истории и прогрессе");};
   $("#m2").onclick=()=>{closeSheet();const n=prompt("Название дня:",p.name);if(n){p.name=n.trim();save();render();}};
   $("#m3").onclick=()=>{closeSheet();const cp=JSON.parse(JSON.stringify(p));cp.id=uid();cp.name=p.name+" (копия)";cp.exercises.forEach(e=>e.id=uid());DB.programs.push(cp);save();render();toast("День скопирован");};
   $("#m4").onclick=()=>{if(confirm("Удалить день «"+p.name+"»? История останется.")){closeSheet();DB.programs=DB.programs.filter(x=>x.id!==p.id);save();render();}};
@@ -657,15 +728,20 @@ function sessionNoteEdit(en){
 }
 
 function finishSession(){
+  const p=DB.programs.find(x=>x.id===session.programId);
+  const noLog=!!(p&&p.noLog);
   // keep only sets that were done
   const entries=session.entries.map(en=>({
     name:en.name,type:en.type,sets:en.sets.filter(s=>s.done).map(s=>({w:s.w,r:s.r,t:s.t,done:true}))
   })).filter(en=>en.sets.length);
+  if(noLog){
+    // warmups / mobility / breaks: nothing is saved to history or progress
+    session=null;stopRest();go("home");toast("Готово 💪");return;
+  }
   if(!entries.length){if(!confirm("Не отмечено ни одного подхода. Всё равно выйти?"))return;session=null;go("home");return;}
   const rec={id:uid(),programId:session.programId,name:session.name,date:session.date,entries};
   DB.history.unshift(rec);
   // update "last" on program exercises for autofill next time
-  const p=DB.programs.find(x=>x.id===session.programId);
   if(p){
     session.entries.forEach(en=>{
       const pe=p.exercises.find(x=>x.id===en.exId);
@@ -791,7 +867,7 @@ function runHoldTimer(en,st,si,onDone){
 /* ============ PROGRESS ============ */
 function allExNames(){
   const set=new Set();
-  DB.programs.forEach(p=>p.exercises.forEach(e=>{if(e.type!=="time")set.add(e.name);}));
+  DB.programs.forEach(p=>{if(p.noLog)return;p.exercises.forEach(e=>{if(e.type!=="time")set.add(e.name);});});
   DB.history.forEach(s=>s.entries.forEach(e=>{if(e.type!=="time")set.add(e.name);}));
   return [...set].sort((a,b)=>a.localeCompare(b,"ru"));
 }
