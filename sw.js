@@ -1,5 +1,5 @@
 // Тренировки — service worker
-const CACHE = "strength-v8";
+const CACHE = "strength-v9";
 const ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +22,11 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
+
+  // Внешние ресурсы (gif/картинки базы упражнений с raw.githubusercontent и т.п.)
+  // не перехватываем — пусть браузер грузит их сам, без opaque-мусора в Cache Storage.
+  if (new URL(req.url).origin !== self.location.origin) return;
+
   const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
 
   if (isHTML) {
@@ -36,7 +41,7 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // прочие ресурсы (иконки, manifest): cache-first
+  // прочие свои ресурсы (иконки, manifest): cache-first
   e.respondWith(
     caches.match(req).then(hit => hit || fetch(req).then(res => {
       const copy = res.clone();
