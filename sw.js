@@ -1,5 +1,6 @@
 // Тренировки — service worker
-const CACHE = "strength-v9";
+const CACHE = "strength-v10";        // оболочка приложения (бампай при каждом релизе)
+const MEDIA = "exercise-media-v1";   // гифки/превью — отдельный кэш, переживает обновления оболочки
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,7 +15,10 @@ self.addEventListener("install", e => {
 
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE && k !== MEDIA).map(k => caches.delete(k))
+      ))
       .then(() => self.clients.claim())
   );
 });
@@ -22,10 +26,23 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
+  const url = new URL(req.url);
 
-  // Внешние ресурсы (gif/картинки базы упражнений с raw.githubusercontent и т.п.)
-  // не перехватываем — пусть браузер грузит их сам, без opaque-мусора в Cache Storage.
-  if (new URL(req.url).origin !== self.location.origin) return;
+  // чужие источники не перехватываем
+  if (url.origin !== self.location.origin) return;
+
+  // медиа упражнений (videos/ и images/): cache-first в отдельном долговечном кэше
+  if (url.pathname.includes("/videos/") || url.pathname.includes("/images/")) {
+    e.respondWith(
+      caches.open(MEDIA).then(c =>
+        c.match(req).then(hit => hit || fetch(req).then(res => {
+          if (res.ok) c.put(req, res.clone());
+          return res;
+        }))
+      )
+    );
+    return;
+  }
 
   const isHTML = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
 
