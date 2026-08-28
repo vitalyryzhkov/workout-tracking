@@ -81,6 +81,8 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
 .field{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
 .field label{font-size:10px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .field label .was{color:var(--accent-dim);text-transform:none;letter-spacing:0;font-weight:700}
+.bump{margin:10px 12px 8px;padding:8px 10px;border-radius:9px;background:rgba(182,244,54,.10);
+  border:1px solid rgba(182,244,54,.28);color:var(--accent);font-size:12.5px;font-weight:700;line-height:1.4}
 .stepper{display:flex;align-items:center;background:var(--surface2);border-radius:10px;overflow:hidden;width:100%}
 .stepper button{width:30px;height:38px;font-size:19px;font-weight:700;color:var(--muted);flex:0 0 auto}
 .stepper button:active{background:var(--line)}
@@ -348,48 +350,52 @@ const KEY="strength_v1";
 const uid=()=>Math.random().toString(36).slice(2,9);
 
 function seedData(){
-  const ex=(name,type,sets,rmin,rmax,rpe,last,note)=>({
-    id:uid(),name,type,sets,rmin,rmax,rpe:rpe||"",note:note||"",last:last||[]
+  const ex=(name,type,sets,rmin,rmax,rpe,last,note,rest)=>({
+    id:uid(),name,type,sets,rmin,rmax,rpe:rpe||"",note:note||"",last:last||[],rest:rest||0
   });
   // last: weighted [{w,r}], reps [{r}], time [{t}]
   const W=(w,r)=>({w,r}), R=r=>({r}), T=t=>({t});
   const programs=[
     {id:uid(),name:"Грудь + Спина + Дельты",exercises:[
-      ex("Жим в тренажёре сидя","weighted",4,8,12,"7",[W(55,8),W(45,10),W(45,10),W(40,10)]),
+      ex("Жим в тренажёре сидя","weighted",4,8,12,"8",[W(55,8),W(45,10),W(45,10),W(40,10)]),
       ex("Тяга горизонтального блока узким хватом","weighted",4,10,12,"7",[W(45,8),W(40,10),W(40,10),W(35,10)]),
       ex("Тяга вертикального блока средним хватом","weighted",4,10,12,"7",[W(45,8),W(40,10),W(40,10),W(35,10)]),
-      ex("Обратная бабочка (задние дельты)","weighted",4,12,15,"6-7",[W(15,12),W(15,12),W(15,12),W(15,12)]),
-      ex("Разведение гантелей на наклонной","weighted",3,12,15,"6",[W(7,12),W(7,12),W(7,12)],"Низкий наклон скамьи!"),
+      ex("Обратная бабочка (задние дельты)","weighted",4,12,15,"8",[W(15,12),W(15,12),W(15,12),W(15,12)]),
+      ex("Разведение гантелей на наклонной","weighted",3,12,15,"7",[W(7,12),W(7,12),W(7,12)],"Низкий наклон скамьи!"),
       ex("Face pull","weighted",3,12,15,"6",[W(15,12),W(15,12),W(15,12)]),
-      ex("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7",[W(7,12),W(7,12),W(7,12)],"Средняя дельта — её в программе не было вовсе. Сидя, чтобы не грузить позвоночник."),
+      ex("Махи гантелями в стороны сидя","weighted",4,12,15,"8",[W(7,12),W(7,12),W(7,12),W(7,12)],"Средняя дельта. Сидя, чтобы не грузить позвоночник."),
+      ex("Подъём гантелей на бицепс сидя","weighted",3,10,12,"8",[W(10,12),W(10,12),W(10,12)],"",90),
+      ex("Разгибания на трицепс в верхнем блоке","weighted",3,12,15,"8",[W(15,12),W(15,12),W(15,12)]),
       ex("Разгибание спины в тренажёре сидя","weighted",3,12,15,"6",[W(20,12),W(20,12),W(20,12)],"Замена римской скамье: спинка вертикально, корпус не уходит вниз головой. Без рывка и без задержки дыхания.")
     ]},
     {id:uid(),name:"Ноги + Глютеус + Стабилизация",exercises:[
       ex("Гакк-тренажёр","weighted",3,10,12,"7",[W(40,10),W(30,12),W(30,12)]),
-      ex("Разгибания ног в тренажёре","weighted",4,12,15,"6-7",[W(35,12),W(35,12),W(35,12),W(35,12)]),
-      ex("Сгибания ног лёжа / сидя","weighted",4,12,15,"7",[W(30,15),W(30,15),W(30,15),W(30,15)]),
+      ex("Разгибания ног в тренажёре","weighted",4,12,15,"8",[W(35,12),W(35,12),W(35,12),W(35,12)]),
+      ex("Сгибания ног лёжа / сидя","weighted",4,12,15,"8",[W(30,15),W(30,15),W(30,15),W(30,15)]),
       ex("Bird dog","reps",3,6,8,"6",[R(8),R(8),R(8)],"По 6–8 на сторону. Разгибатели спины без осевой нагрузки и без положения головой вниз."),
-      ex("Подъёмы на носки в тренажёре сидя","weighted",3,12,15,"6-7",[W(50,12),W(50,12),W(50,12)],"Икры. В этом дне их не было, а после смены за рулём кровь в ногах стоит."),
+      ex("Подъёмы на носки в тренажёре сидя","weighted",3,12,15,"8",[W(50,12),W(50,12),W(50,12)],"Икры. В этом дне их не было, а после смены за рулём кровь в ногах стоит."),
+      ex("Сведение ног в тренажёре","weighted",3,12,15,"8",[W(30,12),W(30,12),W(30,12)],"Приводящие бедра — в программе их не было. Сидя, спина в спинке."),
       ex("Планка (лайтовая)","time",3,20,30,"6",[T(25),T(25),T(25)]),
       ex("Dead bug (по 6–8 на сторону)","reps",3,8,8,"6",[R(8),R(8),R(8)],"Один подход = 6–8 повторов на каждую сторону.")
     ]},
     {id:uid(),name:"Спина + Руки + Дельты",exercises:[
       ex("Тяга горизонтального блока широким хватом","weighted",4,10,12,"7",[W(40,8),W(35,10),W(35,10),W(35,10)]),
-      ex("Жим груди в Хаммере (сидя)","weighted",4,8,12,"7",[W(35,11),W(35,11),W(35,11),W(35,11)]),
+      ex("Жим груди в Хаммере (сидя)","weighted",4,8,12,"8",[W(35,11),W(35,11),W(35,11),W(35,11)]),
       ex("Тяга верхнего блока узким параллельным хватом","weighted",4,10,12,"7",[W(35,11),W(35,11),W(35,11),W(35,11)]),
       ex("Face pull","weighted",4,12,15,"6",[W(15,12),W(15,12),W(15,12),W(15,12)]),
-      ex("Подъём гантелей на бицепс сидя","weighted",3,10,12,"6-7",[W(10,12),W(10,12),W(10,12)]),
-      ex("Разгибания на трицепс в верхнем блоке","weighted",4,12,15,"6-7",[W(15,12),W(15,12),W(15,12),W(15,12)]),
-      ex("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7",[W(7,12),W(7,12),W(7,12)],"Средняя дельта, второй раз за неделю."),
+      ex("Подъём гантелей на бицепс сидя","weighted",4,10,12,"8",[W(10,12),W(10,12),W(10,12),W(10,12)],"",90),
+      ex("Разгибания на трицепс в верхнем блоке","weighted",4,12,15,"8",[W(15,12),W(15,12),W(15,12),W(15,12)]),
+      ex("Махи гантелями в стороны сидя","weighted",4,12,15,"8",[W(7,12),W(7,12),W(7,12),W(7,12)],"Средняя дельта, второй раз за цикл."),
+      ex("Сгибания запястий сидя","weighted",3,12,15,"8",[W(10,15),W(10,15),W(10,15)],"Предплечья — их в программе не было. Предплечья на скамье, корпус вертикально: не наваливайся на бёдра."),
       ex("Изометрия лопаток","time",3,20,20,"",[T(20),T(20),T(20)])
     ]},
     {id:uid(),name:"Ноги + Глютеус + Кор",exercises:[
       ex("Жим ногами (другая постановка стоп)","weighted",4,10,12,"7",[W(85,10),W(75,12),W(75,12),W(75,12)]),
-      ex("Болгарские приседы","weighted",3,8,12,"6-7",[W(0,12),W(0,12),W(0,12)],"С опорой, без веса или лёгкие гантели"),
-      ex("Сгибания ног сидя","weighted",4,12,15,"7",[W(35,12),W(35,12),W(35,12),W(35,12)]),
+      ex("Болгарские приседы","weighted",3,8,12,"7",[W(0,12),W(0,12),W(0,12)],"С опорой, без веса или лёгкие гантели",120),
+      ex("Сгибания ног сидя","weighted",4,12,15,"8",[W(35,12),W(35,12),W(35,12),W(35,12)]),
       ex("Глют-мост в тренажёре / с гантелью","weighted",4,10,12,"7",[W(30,12),W(30,12),W(30,12),W(30,12)]),
-      ex("Тренажёр для голени сидя","weighted",4,12,15,"6-7",[W(50,12),W(50,12),W(50,12),W(50,12)]),
-      ex("Отведение бедра в тренажёре сидя","weighted",3,12,15,"6-7",[W(30,12),W(30,12),W(30,12)],"Средняя ягодичная держит таз. За рулём она выключена, а её слабость тянет за собой поясницу."),
+      ex("Тренажёр для голени сидя","weighted",4,12,15,"8",[W(50,12),W(50,12),W(50,12),W(50,12)]),
+      ex("Отведение бедра в тренажёре сидя","weighted",3,12,15,"8",[W(30,12),W(30,12),W(30,12)],"Средняя ягодичная держит таз. За рулём она выключена, а её слабость тянет за собой поясницу."),
       ex("Боковая планка (на каждую сторону)","time",3,20,30,"",[T(25),T(25),T(25)],"Один подход = обе стороны."),
       ex("Dead bug (по 6–8 на сторону)","reps",3,6,8,"6",[R(8),R(8),R(8)],"Один подход = 6–8 повторов на каждую сторону.")
     ]},
@@ -405,7 +411,7 @@ function seedData(){
   programs.push(...workBreakPrograms());
   programs.push(warmupProgram());
   programs.push(...backPrograms());
-  return {programs,history:[],settings:{rest:90,prep:5,workBreaksAdded:true,warmupAdded:true,rev:REV}};
+  return {programs,history:[],settings:{rest:90,prep:5,autoRest:true,workBreaksAdded:true,warmupAdded:true,rev:REV}};
 }
 
 function workBreakPrograms(){
@@ -495,55 +501,146 @@ function warmupProgram(){
   ]};
 }
 
-const REV=5;   // ревизия программы; поднимай при изменении дней в seedData()
+const REV=7;   // ревизия программы; поднимай при изменении дней в seedData()
 
-/* Догоняем уже установленное приложение до текущей ревизии, не трогая
-   ничего, что пользователь правил сам: заменяем только упражнения,
-   которые остались один в один как в исходной программе.              */
-function migrate(){
+/* Догоняем уже установленное приложение до текущей ревизии.
+   Правила разбиты ПО РЕВИЗИЯМ и выполняются только те, что новее той,
+   на которой стоит пользователь. Иначе каждый подъём REV заново
+   выполнял бы правила прошлых ревизий и возвращал бы то, что
+   пользователь удалил.                                              */
+function migrate(from){
   const day=re=>DB.programs.find(p=>re.test(p.name));
   const has=(p,name)=>p.exercises.some(e=>e.name===name);
   const idx=(p,name)=>p.exercises.findIndex(e=>e.name===name);
   const mk=(name,type,sets,rmin,rmax,rpe,note)=>({id:uid(),name,type,sets,rmin,rmax,rpe:rpe||"",note:note||"",last:[]});
   const swap=(p,oldName,obj)=>{const i=idx(p,oldName);if(i>=0&&!has(p,obj.name))p.exercises[i]=obj;};
-  const add=(p,obj,at)=>{if(!has(p,obj.name)){if(at==null)p.exercises.push(obj);else p.exercises.splice(at,0,obj);}};
+  // вставляем на то же место, что и в свежей установке, а не в конец дня
+  const addBefore=(p,obj,anchor)=>{
+    if(has(p,obj.name))return;
+    const i=idx(p,anchor);
+    if(i>=0)p.exercises.splice(i,0,obj); else p.exercises.push(obj);
+  };
   // заметку ставим только если пользователь свою не написал — иначе затрём его правку
   const rename=(p,from,to,note)=>{const e=p.exercises.find(x=>x.name===from);if(e&&!has(p,to)){e.name=to;if(note&&!e.note)e.note=note;}};
+  // RPE и подходы правим только там, где значение осталось прежним — чужие правки не трогаем
+  const setRpe=(p,name,f,t)=>{const e=p.exercises.find(x=>x.name===name);if(e&&e.rpe===f)e.rpe=t;};
+  const setSets=(p,name,f,t)=>{const e=p.exercises.find(x=>x.name===name);if(e&&e.sets===f){e.sets=t;e.bump=false;}};
+  const setRest=(p,name,t)=>{const e=p.exercises.find(x=>x.name===name);if(e&&!e.rest)e.rest=t;};
+  const setNote=(p,name,re,t)=>{const e=p.exercises.find(x=>x.name===name);if(e&&re.test(e.note||""))e.note=t;};
+  // Прошлые ревизии дописывали новое в конец дня. Переставляем на место,
+  // но только если упражнение и правда в конце — если пользователь двигал
+  // порядок сам, его расстановку не трогаем.
+  const moveBefore=(p,name,anchor)=>{
+    const i=idx(p,name), a=idx(p,anchor);
+    if(i<0||a<0||i!==p.exercises.length-1||i<a)return;
+    const [e]=p.exercises.splice(i,1);
+    p.exercises.splice(idx(p,anchor),0,e);
+  };
 
-  // заметка у замены римской скамьи переписана позже самой замены — догоняем текст
-  DB.programs.forEach(p=>p.exercises.forEach(e=>{
-    if(e.name==="Разгибание спины в тренажёре сидя" && /голова не ниже таза/.test(e.note||""))
-      e.note="Замена римской скамье: спинка вертикально, корпус не уходит вниз головой. Без рывка и без задержки дыхания.";
-  }));
   const d1=day(/Грудь.*Спина.*Дельт/i);
-  if(d1){
-    swap(d1,"Гиперэкстензия на римской скамье",
-      mk("Разгибание спины в тренажёре сидя","weighted",3,12,15,"6","Замена римской скамье: спинка вертикально, корпус не уходит вниз головой. Без рывка и без задержки дыхания."));
-    add(d1,mk("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7","Средняя дельта — её в программе не было вовсе. Сидя, чтобы не грузить позвоночник."));
-  }
   const d2=day(/Ноги.*Стабилизац/i);
-  if(d2){
-    swap(d2,"Гиперэкстензия",
-      mk("Bird dog","reps",3,6,8,"6","По 6–8 на сторону. Разгибатели спины без осевой нагрузки и без положения головой вниз."));
-    add(d2,mk("Подъёмы на носки в тренажёре сидя","weighted",3,12,15,"6-7","Икры. В этом дне их не было, а после смены за рулём кровь в ногах стоит."));
-    rename(d2,"Dead bug","Dead bug (по 6–8 на сторону)","Один подход = 6–8 повторов на каждую сторону.");
-  }
   const d3=day(/Спина.*Руки.*Дельт/i);
-  if(d3)add(d3,mk("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7","Средняя дельта, второй раз за неделю."));
-  DB.programs.filter(p=>/Перерыв ·/i.test(p.name)).forEach(p=>
-    rename(p,"Прогиб назад","Разгибание грудного отдела стоя","Руки в замок за головой, локти в стороны. Прогиб в грудном отделе, поясницу не ломать."));
-  const brk=day(/Перерыв · Полная/i);
-  if(brk)rename(brk,"Скручивания корпуса стоя","Ротация грудного отдела стоя","По 10 на сторону. Таз неподвижен, поворот только в грудном отделе, медленно и без рывка.");
-  const bk=day(/Спина · Восстановление/i);
-  if(bk){const fp=bk.exercises.find(e=>e.name==="Face pull");
-    if(fp&&fp.type==="time"){fp.type="reps";fp.rmin=12;fp.rmax=15;fp.last=[];}}
   const d4=day(/Ноги.*Кор/i);
-  if(d4){
-    add(d4,mk("Отведение бедра в тренажёре сидя","weighted",3,12,15,"6-7","Средняя ягодичная держит таз. За рулём она выключена, а её слабость тянет за собой поясницу."));
-    rename(d4,"Боковая планка","Боковая планка (на каждую сторону)","Один подход = обе стороны.");
-    rename(d4,"Dead bug","Dead bug (по 6–8 на сторону)","Один подход = 6–8 повторов на каждую сторону.");
+
+  /* --- ревизия 2: блок спины, замена римской скамьи, пробелы по группам --- */
+  if(from<2){
+    if(d1){
+      swap(d1,"Гиперэкстензия на римской скамье",
+        mk("Разгибание спины в тренажёре сидя","weighted",3,12,15,"6","Замена римской скамье: спинка вертикально, корпус не уходит вниз головой. Без рывка и без задержки дыхания."));
+      addBefore(d1,mk("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7","Средняя дельта. Сидя, чтобы не грузить позвоночник."),"Разгибание спины в тренажёре сидя");
+    }
+    if(d2){
+      swap(d2,"Гиперэкстензия",
+        mk("Bird dog","reps",3,6,8,"6","По 6–8 на сторону. Разгибатели спины без осевой нагрузки и без положения головой вниз."));
+      addBefore(d2,mk("Подъёмы на носки в тренажёре сидя","weighted",3,12,15,"6-7","Икры. В этом дне их не было, а после смены за рулём кровь в ногах стоит."),"Планка (лайтовая)");
+      rename(d2,"Dead bug","Dead bug (по 6–8 на сторону)","Один подход = 6–8 повторов на каждую сторону.");
+    }
+    if(d3)addBefore(d3,mk("Махи гантелями в стороны сидя","weighted",3,12,15,"6-7","Средняя дельта, второй раз за цикл."),"Изометрия лопаток");
+    if(d4){
+      rename(d4,"Боковая планка","Боковая планка (на каждую сторону)","Один подход = обе стороны.");
+      rename(d4,"Dead bug","Dead bug (по 6–8 на сторону)","Один подход = 6–8 повторов на каждую сторону.");
+      addBefore(d4,mk("Отведение бедра в тренажёре сидя","weighted",3,12,15,"6-7","Средняя ягодичная держит таз. За рулём она выключена, а её слабость тянет за собой поясницу."),"Боковая планка (на каждую сторону)");
+    }
+    backPrograms().forEach(p=>{ if(!DB.programs.some(x=>x.name===p.name))DB.programs.push(p); });
   }
-  backPrograms().forEach(p=>{ if(!DB.programs.some(x=>x.name===p.name))DB.programs.push(p); });
+
+  /* --- ревизия 3: скручивания в дне перерыва, тип Face pull в блоке спины --- */
+  if(from<3){
+    const brk=day(/Перерыв · Полная/i);
+    if(brk)rename(brk,"Скручивания корпуса стоя","Ротация грудного отдела стоя","По 10 на сторону. Таз неподвижен, поворот только в грудном отделе, медленно и без рывка.");
+    const bk=day(/Спина · Восстановление/i);
+    if(bk){const fp=bk.exercises.find(e=>e.name==="Face pull");
+      if(fp&&fp.type==="time"){fp.type="reps";fp.rmin=12;fp.rmax=15;fp.last=[];}}
+  }
+
+  /* --- ревизия 4: «Прогиб назад» в днях перерыва --- */
+  if(from<4){
+    DB.programs.filter(p=>/Перерыв ·/i.test(p.name)).forEach(p=>
+      rename(p,"Прогиб назад","Разгибание грудного отдела стоя","Руки в замок за головой, локти в стороны. Прогиб в грудном отделе, поясницу не ломать."));
+  }
+
+  /* --- ревизия 5: переписанная заметка у замены римской скамьи --- */
+  if(from<5){
+    DB.programs.forEach(p=>setNote(p,"Разгибание спины в тренажёре сидя",/голова не ниже таза/,
+      "Замена римской скамье: спинка вертикально, корпус не уходит вниз головой. Без рывка и без задержки дыхания."));
+  }
+
+  /* --- ревизия 6: программа переведена с поддерживающего режима на рост мышц.
+     Ближе к отказу там, где позвоночник не участвует; закрыты руки,
+     предплечья и приводящие; средняя дельта поднята до 8 подходов за цикл. --- */
+  if(from<6){
+    [["Жим в тренажёре сидя","7","8"],
+     ["Жим груди в Хаммере (сидя)","7","8"],
+     ["Обратная бабочка (задние дельты)","6-7","8"],
+     ["Разведение гантелей на наклонной","6","7"],
+     ["Разгибания ног в тренажёре","6-7","8"],
+     ["Сгибания ног лёжа / сидя","7","8"],
+     ["Подъёмы на носки в тренажёре сидя","6-7","8"],
+     ["Подъём гантелей на бицепс сидя","6-7","8"],
+     ["Разгибания на трицепс в верхнем блоке","6-7","8"],
+     ["Сгибания ног сидя","7","8"],
+     ["Тренажёр для голени сидя","6-7","8"],
+     ["Отведение бедра в тренажёре сидя","6-7","8"],
+     ["Болгарские приседы","6-7","7"],
+     ["Махи гантелями в стороны сидя","6-7","8"]
+    ].forEach(([nm,f,t])=>DB.programs.forEach(p=>setRpe(p,nm,f,t)));
+    DB.programs.forEach(p=>{
+      setSets(p,"Махи гантелями в стороны сидя",3,4);
+      setNote(p,"Махи гантелями в стороны сидя",/её в программе не было вовсе|второй раз за неделю/,
+        p===d3?"Средняя дельта, второй раз за цикл.":"Средняя дельта. Сидя, чтобы не грузить позвоночник.");
+    });
+    // установки, обновлявшиеся до ревизии 5, получили эти упражнения в конец дня
+    if(d1)moveBefore(d1,"Махи гантелями в стороны сидя","Разгибание спины в тренажёре сидя");
+    if(d2)moveBefore(d2,"Подъёмы на носки в тренажёре сидя","Планка (лайтовая)");
+    if(d3)moveBefore(d3,"Махи гантелями в стороны сидя","Изометрия лопаток");
+    if(d4)moveBefore(d4,"Отведение бедра в тренажёре сидя","Боковая планка (на каждую сторону)");
+    // заметки, которые rename не переписал: он ставит текст только в пустую
+    if(d4){
+      setNote(d4,"Боковая планка (на каждую сторону)",/^На каждую сторону$/,"Один подход = обе стороны.");
+      setNote(d4,"Dead bug (по 6–8 на сторону)",/^По 6–8 на сторону$/,"Один подход = 6–8 повторов на каждую сторону.");
+    }
+    if(d2)setNote(d2,"Dead bug (по 6–8 на сторону)",/^По 6–8 на сторону$/,"Один подход = 6–8 повторов на каждую сторону.");
+
+    if(d1){
+      addBefore(d1,mk("Подъём гантелей на бицепс сидя","weighted",3,10,12,"8"),"Разгибание спины в тренажёре сидя");
+      addBefore(d1,mk("Разгибания на трицепс в верхнем блоке","weighted",3,12,15,"8"),"Разгибание спины в тренажёре сидя");
+    }
+    if(d2)addBefore(d2,mk("Сведение ног в тренажёре","weighted",3,12,15,"8","Приводящие бедра — в программе их не было. Сидя, спина в спинке."),"Планка (лайтовая)");
+    if(d3){
+      setSets(d3,"Подъём гантелей на бицепс сидя",3,4);
+      addBefore(d3,mk("Сгибания запястий сидя","weighted",3,12,15,"8","Предплечья — их в программе не было. Предплечья на скамье, корпус вертикально: не наваливайся на бёдра."),"Изометрия лопаток");
+    }
+  }
+
+  /* --- ревизия 7: отдых подбирается под упражнение. Правило по диапазону
+     повторов не отличает изоляцию от базы там, где диапазоны совпадают,
+     поэтому паре упражнений задаём время явно. --- */
+  if(from<7){
+    DB.programs.forEach(p=>{
+      setRest(p,"Подъём гантелей на бицепс сидя",90);
+      setRest(p,"Болгарские приседы",120);
+    });
+  }
 }
 
 let DB;
@@ -596,6 +693,7 @@ function normalizeDB(){
   normDropped.sessions=histBefore-DB.history.length;
   if(!DB.settings)DB.settings={rest:90,prep:5};
   if(DB.settings.prep==null)DB.settings.prep=5;
+  if(DB.settings.autoRest==null)DB.settings.autoRest=true;
   if(!DB.settings.workBreaksAdded){
     DB.programs.push(...workBreakPrograms());
     DB.settings.workBreaksAdded=true;
@@ -606,7 +704,7 @@ function normalizeDB(){
     DB.settings.warmupAdded=true;
     save();
   }
-  if((DB.settings.rev||0)<REV){ migrate(); DB.settings.rev=REV; save(); }
+  if((DB.settings.rev||0)<REV){ migrate(DB.settings.rev||0); DB.settings.rev=REV; save(); }
   // default known warmup/cooldown/break days to "no history"
   let changed=false;
   DB.programs.forEach(p=>{
@@ -742,7 +840,8 @@ function EditDay(){
   if(!p.exercises.length)c.appendChild(el("div","del","Пока пусто — добавь упражнение"));
   p.exercises.forEach((e,i)=>{
     const row=el("div","edit-ex");
-    const tgt=e.type==="time"?`${e.rmin}-${e.rmax}с`:e.type==="reps"?`${e.rmin}-${e.rmax} повт`:`${e.sets}×${e.rmin}-${e.rmax}`;
+    const tgt=(e.type==="time"?`${e.rmin}-${e.rmax}с`:e.type==="reps"?`${e.rmin}-${e.rmax} повт`:`${e.sets}×${e.rmin}-${e.rmax}`)
+      +` · отдых ${fmtTime(restFor(e))}`;
     row.innerHTML=`<span class="handle" data-up>▲</span><span class="handle" data-dn>▼</span>
       ${e.lib&&e.lib.img?`<img class="libthumb" loading="lazy" src="${libMedia(e.lib.img)}" alt="" onerror="this.style.display='none'">`:""}
       <div class="nm">${esc(e.name)}<div class="ty">${TYPE[e.type]} · ${esc(tgt)}${e.rpe?` · RPE ${esc(e.rpe)}`:""}</div></div>
@@ -762,7 +861,7 @@ function EditDay(){
 
 function exForm(p,e){
   const isNew=!e;
-  const d=e||{name:"",type:"weighted",sets:4,rmin:8,rmax:12,rpe:"",note:""};
+  const d=e||{name:"",type:"weighted",sets:4,rmin:8,rmax:12,rpe:"",note:"",rest:0};
   sheet(`<h2>${isNew?"Новое упражнение":"Упражнение"}</h2>
     <div class="fl"><label>Название</label><input id="f_name" value="${esc(d.name)}" placeholder="Напр. Жим лёжа"></div>
     <div class="fl"><label>Тип</label><div class="seg" id="f_type">
@@ -778,6 +877,8 @@ function exForm(p,e){
       <div><label id="lab_min">Повт. от</label><input id="f_min" type="number" inputmode="numeric" value="${d.rmin}"></div>
       <div><label id="lab_max">Повт. до</label><input id="f_max" type="number" inputmode="numeric" value="${d.rmax}"></div>
     </div></div>
+    <div class="fl"><label>Отдых после подхода, сек (0 — подобрать самому)</label>
+      <input id="f_rest" type="number" inputmode="numeric" value="${d.rest||0}"></div>
     <div class="fl"><label>Заметка (необязательно)</label><textarea id="f_note" placeholder="Техника, акценты…">${esc(d.note)}</textarea></div>
     ${isNew?'<button class="bigbtn ghost" id="f_lib" style="margin-bottom:12px">📚 Взять из базы упражнений</button>':""}
     <button class="bigbtn" id="f_save">${isNew?"Добавить":"Сохранить"}</button>`);
@@ -796,9 +897,10 @@ function exForm(p,e){
     const name=$("#f_name").value.trim();if(!name){toast("Впиши название");return;}
     const sets=Math.max(1,+$("#f_sets").value||1);
     const rmin=+$("#f_min").value||0, rmax=+$("#f_max").value||rmin;
-    const obj={name,type,sets,rmin,rmax,rpe:$("#f_rpe").value.trim(),note:$("#f_note").value.trim()};
+    const obj={name,type,sets,rmin,rmax,rpe:$("#f_rpe").value.trim(),note:$("#f_note").value.trim(),
+      rest:Math.max(0,+$("#f_rest").value||0)};
     if(isNew){obj.id=uid();obj.last=[];p.exercises.push(obj);}
-    else{Object.assign(e,obj);}
+    else{Object.assign(e,obj);e.bump=false;}   // диапазон мог измениться — подсказка устарела
     save();closeSheet();render();
   };
 }
@@ -817,7 +919,7 @@ function startSession(p){
         done:false
       });
     }
-    return {exId:e.id,name:e.name,type:e.type,rmin:e.rmin,rmax:e.rmax,rpe:e.rpe,note:e.note,sets,lib:e.lib||null};
+    return {exId:e.id,name:e.name,type:e.type,rmin:e.rmin,rmax:e.rmax,rpe:e.rpe,note:e.note,sets,lib:e.lib||null,bump:!!e.bump,rest:e.rest||0};
   })};
   go("session");
 }
@@ -839,10 +941,16 @@ function Session(){
     if(en.type==="time")tgt.push(`<b>${en.sets.length}</b>×${en.rmin}-${en.rmax}с`);
     else tgt.push(`<b>${en.sets.length}</b>×${en.rmin}-${en.rmax}`);
     if(en.rpe)tgt.push(`RPE ${esc(en.rpe)}`);
+    tgt.push(`отдых ${fmtTime(restFor(en))}`);
     const head=el("div","head",`<h3>${esc(en.name)}</h3><div class="target">${tgt.join(" · ")}</div>`);
     const menu=el("button","menu","⋯");menu.onclick=()=>sessionExMenu(ei);head.appendChild(menu);
     if(en.lib&&en.lib.id){const hw=el("button","exhowto","▶");hw.title="Как делать";hw.onclick=()=>libDetail(libById(en.lib.id),true);head.appendChild(hw);}
     ex.appendChild(head);
+    if(en.bump&&en.type==="weighted"){
+      const hadWeight=en.sets.some(s=>s.prev&&(s.prev.w||0)>0);
+      ex.appendChild(el("div","bump","↑ В прошлый раз взял верх диапазона во всех подходах — "+
+        (hadWeight?"добавь вес (обычно +2.5 кг)":"добавь вес или усложни вариант")));
+    }
     if(en.note)ex.appendChild(el("div","note",esc(en.note)));
     en.sets.forEach((st,si)=>ex.appendChild(setRow(en,ei,st,si)));
     const foot=el("div","exfoot");
@@ -895,7 +1003,7 @@ function setRow(en,ei,st,si){
         // st.t — это ЦЕЛЬ, она не меняется; фактически выдержанное лежит в st.tDone
         const inp=f.querySelector("input");if(inp)inp.value=st.t;
         if(st.tDone!=null&&st.tDone<st.t)toast("Записано "+st.tDone+"с из "+st.t+"с");
-        startRest();
+        startRest(en);
       });
     };
     row.appendChild(play);
@@ -910,7 +1018,7 @@ function toggleSet(en,st,row,no,chk){
   if(st.done){
     vibe(15);
     const pr=checkPR(en,st);
-    startRest();
+    startRest(en);
     if(pr)toast("🏆 Личный рекорд!",true);
   }
   renderSetNo(row,st);
@@ -988,7 +1096,23 @@ function finishSession(){
   if(p){
     session.entries.forEach(en=>{
       const pe=p.exercises.find(x=>x.id===en.exId);
-      if(pe){const done=en.sets.filter(s=>s.done);if(done.length)pe.last=done.map(s=>{
+      if(pe){const done=en.sets.filter(s=>s.done);
+        // Двойная прогрессия. Условие строгое: закрыты ВСЕ подходы упражнения,
+        // в каждом взят верх диапазона, и вес не ниже прошлого раза — иначе
+        // недоделанное упражнение или разгрузочный вес гнали бы прибавку вверх.
+        // Вес сверяем ПОДХОД С ТЕМ ЖЕ ПОДХОДОМ прошлой тренировки, а не с её
+        // максимумом: на нисходящей пирамиде 55/45/45/40 сравнение с 55
+        // делало подсказку недостижимой.
+        // Если упражнение вообще не трогали — флаг оставляем как был.
+        if(en.type==="weighted" && done.length){
+          // подходов должно быть не меньше, чем запланировано в дне: иначе
+          // достаточно было бы удалить лишние кнопкой «− Подход»
+          pe.bump = en.sets.length>=(pe.sets||0) && en.sets.length>0 && en.sets.every((s,i)=>{
+            const pw=(pe.last&&pe.last[i]&&pe.last[i].w!=null)?pe.last[i].w:0;
+            return s.done && (s.r||0)>=en.rmax && (s.w||0)>=pw;
+          });
+        }
+        if(done.length)pe.last=done.map(s=>{
         if(en.type==="weighted")return{w:s.w,r:s.r};
         if(en.type==="reps")return{r:s.r};
         // t — цель (она переносится дальше), tDone — сколько выдержал на самом деле
@@ -1014,8 +1138,25 @@ function timersActive(){ return $("#rest").classList.contains("on")||$("#htimer"
 /* ============ REST TIMER ============ */
 let restInt=null,restEndAt=0,restTotal=0;
 function restRemaining(){return Math.max(0,Math.round((restEndAt-Date.now())/1000));}
-function startRest(){
-  restTotal=DB.settings.rest||90;
+/* Сколько отдыхать после подхода. Приоритет ровно такой:
+   1) подбор выключен — единое значение из настроек, без исключений;
+   2) значение, заданное у самого упражнения;
+   3) автоподбор по типу и диапазону повторов.
+   Порядок именно этот: иначе значения, проставленные самой программой,
+   выглядели бы как необъяснимые исключения из «одного значения».      */
+function restFor(en){
+  // Подбор выключен — единое значение на всё приложение, без исключений:
+  // иначе значения, проставленные самой программой, выглядели бы как
+  // необъяснимые исключения из «одного значения».
+  if(!DB.settings.autoRest)return DB.settings.rest||90;
+  if(!en)return DB.settings.rest||90;
+  if(en.rest)return en.rest;                           // задано у самого упражнения
+  if(en.type==="time")return 45;                       // планки, изометрия, удержания
+  if(en.type==="reps")return 60;                       // без веса: bird dog, dead bug, подтягивания
+  return en.rmax<=12?150:90;                           // база : изоляция
+}
+function startRest(en){
+  restTotal=restFor(en);
   if(restTotal<=0){return;}
   restEndAt=Date.now()+restTotal*1000;
   $("#rest").classList.add("on");updateRest();requestWake();
@@ -1192,10 +1333,26 @@ function Diary(){
 function More(){
   const w=el("div");
   w.appendChild(el("div","eyebrow","Таймер отдыха"));
+  const ar=el("div","card");ar.style.cssText="padding:14px;margin-bottom:10px";
+  ar.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1"><div style="font-weight:700">Подбирать под упражнение</div>
+      <div style="color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:3px">
+        На вес: диапазон до 12 повторов — 2:30, выше 12 — 1:30.
+        Без веса — 1:00, на время — 0:45. Своё значение у упражнения важнее этих.
+        Когда подбор выключен, работает одно значение ниже.</div></div>
+    <div class="seg" style="flex:0 0 auto" id="arSeg">
+      <button data-v="1" class="${DB.settings.autoRest?'on':''}">вкл</button>
+      <button data-v="0" class="${DB.settings.autoRest?'':'on'}">выкл</button>
+    </div></div>`;
+  w.appendChild(ar);
+  ar.querySelectorAll("#arSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.autoRest=b.dataset.v==="1";save();render();
+  });
   const c=el("div","card");c.style.padding="14px";
   const cur=DB.settings.rest||90;
+  if(DB.settings.autoRest)c.style.opacity=".45";
   c.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
-    <div style="flex:1;font-weight:700">По умолчанию</div>
+    <div style="flex:1;font-weight:700">Если подбор выключен</div>
     <div class="num" id="restVal" style="font-size:18px;font-weight:800;color:var(--accent)">${fmtTime(cur)}</div></div>
     <div class="seg" id="restSeg" style="margin-top:10px">
     ${[60,75,90,120,150].map(s=>`<button data-s="${s}" class="${s===cur?'on':''}">${s>=60?fmtTime(s):s+'с'}</button>`).join("")}</div>`;
