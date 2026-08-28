@@ -1,5 +1,5 @@
 // Тренировки — service worker
-const CACHE = "strength-v10";        // оболочка приложения (бампай при каждом релизе)
+const CACHE = "strength-v14";        // оболочка приложения (бампай при каждом релизе)
 const MEDIA = "exercise-media-v1";   // гифки/превью — отдельный кэш, переживает обновления оболочки
 const ASSETS = [
   "./",
@@ -64,6 +64,7 @@ self.addEventListener("fetch", e => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
       return res;
-    }).catch(() => hit))
+    // офлайн и в кэше пусто: отдаём честную 504, а не undefined
+    }).catch(() => new Response("", {status: 504, statusText: "offline"})))
   );
 });
