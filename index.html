@@ -736,6 +736,7 @@ function normalizeDB(){
   if(!DB.settings)DB.settings={rest:90,prep:5};
   if(DB.settings.prep==null)DB.settings.prep=5;
   if(DB.settings.autoRest==null)DB.settings.autoRest=true;
+  if(DB.settings.sound==null)DB.settings.sound=true;
   // сверяем по имени, а не только по флагу: бэкап без settings иначе задваивал дни
   const dayExists=n=>DB.programs.some(p=>p.name===n);
   if(!DB.settings.workBreaksAdded){
@@ -1181,7 +1182,18 @@ function releaseWake(){ try{ if(wakeLock){wakeLock.release();wakeLock=null;} }ca
 function timersActive(){ return $("#rest").classList.contains("on")||$("#htimer").classList.contains("on"); }
 
 /* ============ REST TIMER ============ */
-let restInt=null,restEndAt=0,restTotal=0;
+let restInt=null,restEndAt=0,restTotal=0,restNodes=[];
+
+/* На айфоне JS замирает, как только гаснет экран, поэтому играть сигнал
+   «по тику таймера» ненадёжно. Планируем все звуки вперёд, по часам
+   аудиоконтекста: отсчёт за 3, 2, 1 секунду и аккорд в ноль.          */
+function cancelRestSound(){restNodes.forEach(o=>{try{o.stop()}catch(e){}});restNodes=[];}
+function scheduleRestSound(sec){
+  cancelRestSound();
+  [3,2,1].forEach(s=>{if(sec>s)restNodes.push(...tick(sec-s));});
+  restNodes.push(...chime(sec));
+  restNodes=restNodes.filter(Boolean);
+}
 function restRemaining(){return Math.max(0,Math.round((restEndAt-Date.now())/1000));}
 /* Сколько отдыхать после подхода. Приоритет ровно такой:
    1) подбор выключен — единое значение из настроек, без исключений;
@@ -1203,12 +1215,18 @@ function restFor(en){
 function startRest(en){
   restTotal=restFor(en);
   if(restTotal<=0){return;}
+  wakeAudio();                  // вызвано из обработчика касания — здесь звук и разрешают
+  scheduleRestSound(restTotal);
   restEndAt=Date.now()+restTotal*1000;
   $("#rest").classList.add("on");updateRest();requestWake();
   clearInterval(restInt);
   restInt=setInterval(()=>{
-    if(restRemaining()<=0){clearInterval(restInt);restDone();}
-    else updateRest();
+    const left=restRemaining();
+    if(left<=0){clearInterval(restInt);restDone();}
+    else{
+      if(left<=3)vibe(20);      // где вибрация есть; на iOS её нет вовсе
+      updateRest();
+    }
   },250);
 }
 function updateRest(){
@@ -1216,10 +1234,11 @@ function updateRest(){
   $("#restT").textContent=fmtTime(left);
   $("#restProg").style.width=(100*(restTotal-left)/restTotal)+"%";
 }
-function restDone(){vibe([60,40,60]);beep(880,0.2);setTimeout(stopRest,500);}
-function stopRest(){clearInterval(restInt);$("#rest").classList.remove("on");if(!timersActive())releaseWake();}
+// звук уже запланирован при старте — здесь только вибрация и закрытие
+function restDone(){vibe([70,50,70,50,140]);setTimeout(stopRest,700);}
+function stopRest(){clearInterval(restInt);cancelRestSound();$("#rest").classList.remove("on");if(!timersActive())releaseWake();}
 $("#restSkip").onclick=stopRest;
-$("#restAdd").onclick=()=>{restEndAt+=15000;restTotal+=15;updateRest();};
+$("#restAdd").onclick=()=>{restEndAt+=15000;restTotal+=15;scheduleRestSound(restRemaining());updateRest();};
 
 /* re-sync when returning to the app (iOS freezes JS in background) */
 document.addEventListener("visibilitychange",()=>{
@@ -1232,18 +1251,35 @@ document.addEventListener("visibilitychange",()=>{
 
 /* ============ HOLD TIMER (timed exercises) ============ */
 let AC=null;
-function beep(freq,dur){
+/* Браузер разрешает звук только в контексте, разбуженном касанием экрана.
+   Таймер отдыха запускается сам, поэтому его сигнал молчал: контекст
+   создавался внутри setInterval и оставался заглушённым. Будим его при
+   первом же касании и повторно при возврате в приложение.              */
+function wakeAudio(){
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     if(AC.state==="suspended")AC.resume();
-    const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
-    o.type="sine";o.frequency.value=freq;
-    g.gain.setValueAtTime(0.0001,t);o.connect(g);g.connect(AC.destination);
-    g.gain.exponentialRampToValueAtTime(0.28,t+0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    o.start(t);o.stop(t+dur+0.03);
   }catch(e){}
 }
+document.addEventListener("pointerdown",wakeAudio,{passive:true});
+document.addEventListener("touchend",wakeAudio,{passive:true});
+
+function beep(freq,dur,offset){
+  if(DB&&DB.settings&&DB.settings.sound===false)return null;
+  try{
+    wakeAudio(); if(!AC)return null;
+    const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+(offset||0);
+    o.type="sine";o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t);o.connect(g);g.connect(AC.destination);
+    g.gain.exponentialRampToValueAtTime(0.3,t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.start(t);o.stop(t+dur+0.03);
+    return o;
+  }catch(e){return null;}
+}
+// три ноты вверх — «время вышло»; слышно лучше одиночного писка
+const chime=off=>[beep(660,0.13,off||0),beep(880,0.13,(off||0)+0.14),beep(1180,0.2,(off||0)+0.28)];
+const tick=off=>[beep(640,0.08,off||0)];
 let htRAF=null;
 function runHoldTimer(en,st,si,onDone){
   try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();}catch(e){}
@@ -1261,7 +1297,7 @@ function runHoldTimer(en,st,si,onDone){
   function stop(){cancelAnimationFrame(htRAF);htRAF=null;ov.classList.remove("on");if(!timersActive())releaseWake();}
   // пишем фактическое время в st.tDone, а не в st.t — иначе досрочное «Готово»
   // навсегда занижало бы цель на следующую тренировку
-  function finish(secs){stop();st.tDone=Math.round(secs);vibe([70,50,140]);beep(900,0.22);onDone();}
+  function finish(secs){stop();st.tDone=Math.round(secs);vibe([70,50,70,50,140]);chime(0);onDone();}
   function tick(now){
     if(paused){htRAF=requestAnimationFrame(tick);return;}
     const elapsed=(now-start-pausedTotal)/1000;
@@ -1270,14 +1306,14 @@ function runHoldTimer(en,st,si,onDone){
       big.textContent=Math.max(0,rc);big.style.color="var(--warn)";
       arc.style.stroke="var(--warn)";lbl.textContent="приготовься";
       setArc(rem/prep);
-      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;beep(640,0.08);vibe(20);}
+      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;tick(0);vibe(20);}
       if(rem<=0){phase="hold";start=now;pausedTotal=0;lastBeep=-1;beep(900,0.16);vibe(45);}
     }else{
       const rem=hold-elapsed,rc=Math.ceil(rem);
       big.textContent=Math.max(0,rc);big.style.color="var(--accent)";
       arc.style.stroke="var(--accent)";lbl.textContent=en.name;
       setArc(rem/hold);
-      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;beep(640,0.08);vibe(20);}
+      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;tick(0);vibe(20);}
       if(rem<=0){finish(hold);return;}
     }
     htRAF=requestAnimationFrame(tick);
@@ -1388,6 +1424,26 @@ function Diary(){
 /* ============ MORE ============ */
 function More(){
   const w=el("div");
+  w.appendChild(el("div","eyebrow","Звук"));
+  const sc=el("div","card");sc.style.cssText="padding:14px;margin-bottom:16px";
+  sc.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
+    <div style="flex:1"><div style="font-weight:700">Сигналы таймеров</div>
+      <div style="color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:3px">
+        Отсчёт последних трёх секунд и сигнал «время вышло» — и в отдыхе, и в упражнениях на время.
+        На айфоне звук глушит боковой переключатель «без звука», а вибрации в браузере нет вовсе.</div></div>
+    <div class="seg" style="flex:0 0 auto" id="sndSeg">
+      <button data-v="1" class="${DB.settings.sound!==false?'on':''}">вкл</button>
+      <button data-v="0" class="${DB.settings.sound===false?'on':''}">выкл</button>
+    </div></div>
+    <button class="bigbtn ghost" id="sndTest" style="margin-top:10px">Проверить сигнал</button>`;
+  w.appendChild(sc);
+  sc.querySelectorAll("#sndSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.sound=b.dataset.v==="1";save();render();
+  });
+  sc.querySelector("#sndTest").onclick=()=>{
+    wakeAudio(); tick(0); tick(0.6); tick(1.2); chime(1.8); vibe([70,50,70,50,140]);
+    toast(DB.settings.sound===false?"Звук выключен в настройке выше":"Три тика, затем «время вышло»");};
+
   w.appendChild(el("div","eyebrow","Таймер отдыха"));
   const ar=el("div","card");ar.style.cssText="padding:14px;margin-bottom:10px";
   ar.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
