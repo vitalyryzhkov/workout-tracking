@@ -1281,16 +1281,25 @@ function makeWav(segs,rate){
     const g=Math.round((s.gap||0)*rate);
     for(let i=0;i<g;i++){v.setInt16(p,0,true);p+=2;}
   });
-  const b=new Uint8Array(buf);let bin="";
-  for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
-  return "data:audio/wav;base64,"+btoa(bin);
+  // Safari на iOS отказывается играть data:-ссылку в <audio> (NotSupportedError),
+  // а Blob-ссылку принимает. data: оставляем запасным путём.
+  try{return URL.createObjectURL(new Blob([buf],{type:"audio/wav"}));}
+  catch(e){
+    const b=new Uint8Array(buf);let bin="";
+    for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
+    return "data:audio/wav;base64,"+btoa(bin);
+  }
 }
 let sfxReady=false,sfxNote="";
 function sfxInit(){
   if(sfxReady)return;
   try{
-    $("#sfxTick").src=makeWav([{f:640,d:0.09}]);
-    $("#sfxChime").src=makeWav([{f:660,d:0.13,gap:0.02},{f:880,d:0.13,gap:0.02},{f:1180,d:0.22}]);
+    const t=$("#sfxTick"),c=$("#sfxChime");
+    t.src=makeWav([{f:640,d:0.09}]);
+    c.src=makeWav([{f:660,d:0.13,gap:0.02},{f:880,d:0.13,gap:0.02},{f:1180,d:0.22}]);
+    t.load();c.load();
+    t.onerror=()=>{sfxNote="источник тика не принят";};
+    c.onerror=()=>{sfxNote="источник аккорда не принят";};
     sfxReady=true;
   }catch(e){sfxNote="wav: "+e.message;}
 }
@@ -1323,11 +1332,14 @@ function sfxPlay(which){
    Таймер отдыха запускается сам, поэтому его сигнал молчал: контекст
    создавался внутри setInterval и оставался заглушённым. Будим его при
    первом же касании и повторно при возврате в приложение.              */
+let acNote="";
 function wakeAudio(){
   try{
-    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
-    if(AC.state==="suspended")AC.resume();
-  }catch(e){}
+    const Ctor=window.AudioContext||window.webkitAudioContext;
+    if(!Ctor){acNote="AudioContext отсутствует";return;}
+    AC=AC||new Ctor();
+    if(AC.state==="suspended")AC.resume().catch(e=>{acNote="resume: "+e.name;});
+  }catch(e){acNote=(e&&e.name||"ошибка")+": "+(e&&e.message||"");}
 }
 const unlockAll=()=>{wakeAudio();sfxUnlock();};
 document.addEventListener("pointerdown",unlockAll,{passive:true});
@@ -1532,19 +1544,38 @@ function More(){
   });
   const diag=()=>{
     const a=$("#sfxTick");
-    return ["способ: "+sfxMode(),
-      "движок: "+(AC?AC.state:"не создан"),
-      "медиа: "+(a&&a.dataset.ok?"разрешён":"не разрешён")+(a&&a.src?", звук готов":", звука нет"),
+    const src=a&&a.src?(a.src.slice(0,5)+"…"):"нет";
+    return ["способ: "+sfxMode()+" · сигналы: "+(DB.settings.sound===false?"ВЫКЛ":"вкл"),
+      "движок: "+(AC?AC.state:"не создан")+
+        " (AudioContext "+(window.AudioContext?"есть":"нет")+
+        ", webkit "+(window.webkitAudioContext?"есть":"нет")+")",
+      "медиа: "+(a&&a.dataset.ok?"разрешён":"не разрешён")+", источник "+src+
+        (a?", readyState "+a.readyState:""),
       "iOS: "+(IS_IOS?"да":"нет")+" · вибрация: "+(navigator.vibrate?"есть":"нет"),
-      sfxNote?("последняя ошибка — "+sfxNote):"ошибок нет"].join(String.fromCharCode(10));
+      "движок — "+(acNote||"без ошибок"),
+      "медиа — "+(sfxNote||"без ошибок")].join(String.fromCharCode(10));
   };
   sc.querySelector("#sndDiag").textContent=diag();
+  const refresh=()=>{const d=sc.querySelector("#sndDiag");if(d)d.textContent=diag();};
   sc.querySelector("#sndTest").onclick=()=>{
     unlockAll();
     tick(0);tick(0.6);tick(1.2);chime(1.9);vibe([70,50,70,50,140]);
-    setTimeout(()=>{const d=sc.querySelector("#sndDiag");if(d)d.textContent=diag();},2600);
+    refresh(); [400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
     toast(DB.settings.sound===false?"Звук выключен в настройке выше":"Три тика, затем «время вышло»");
   };
+  // прогнать оба способа подряд, чтобы понять, какой из них живой
+  const both=el("button","bigbtn ghost","Проверить оба способа подряд");
+  both.style.marginTop="8px";
+  both.onclick=()=>{
+    unlockAll();
+    const was=DB.settings.sfx;
+    DB.settings.sfx="webaudio"; tick(0); chime(0.5);
+    setTimeout(()=>{DB.settings.sfx="audio";sfxPlay("tick");
+      setTimeout(()=>sfxPlay("chime"),500);
+      setTimeout(()=>{DB.settings.sfx=was;refresh();},1500);},2000);
+    toast("Сначала движок, через 2 сек — медиа");
+  };
+  sc.appendChild(both);
 
   w.appendChild(el("div","eyebrow","Таймер отдыха"));
   const ar=el("div","card");ar.style.cssText="padding:14px;margin-bottom:10px";
