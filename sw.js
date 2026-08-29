@@ -1,5 +1,5 @@
 // Тренировки — service worker
-const CACHE = "strength-v22";        // оболочка приложения (бампай при каждом релизе)
+const CACHE = "strength-v23";        // оболочка приложения (бампай при каждом релизе)
 const MEDIA = "exercise-media-v1";   // гифки/превью — отдельный кэш, переживает обновления оболочки
 const ASSETS = [
   "./",

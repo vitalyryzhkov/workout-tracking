@@ -303,6 +303,8 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
 </div>
 
 <div class="toast" id="toast"></div>
+<audio id="sfxTick" preload="auto" playsinline></audio>
+<audio id="sfxChime" preload="auto" playsinline></audio>
 
 <script>
 "use strict";
@@ -1182,7 +1184,7 @@ function releaseWake(){ try{ if(wakeLock){wakeLock.release();wakeLock=null;} }ca
 function timersActive(){ return $("#rest").classList.contains("on")||$("#htimer").classList.contains("on"); }
 
 /* ============ REST TIMER ============ */
-let restInt=null,restEndAt=0,restTotal=0,restNodes=[];
+let restInt=null,restEndAt=0,restTotal=0,restNodes=[],restLastTick=-1;
 
 /* На айфоне JS замирает, как только гаснет экран, поэтому играть сигнал
    «по тику таймера» ненадёжно. Планируем все звуки вперёд, по часам
@@ -1190,6 +1192,7 @@ let restInt=null,restEndAt=0,restTotal=0,restNodes=[];
 function cancelRestSound(){restNodes.forEach(o=>{try{o.stop()}catch(e){}});restNodes=[];}
 function scheduleRestSound(sec){
   cancelRestSound();
+  if(sfxMode()==="audio")return;   // медиа-элемент вперёд не планируется, играем по тику
   [3,2,1].forEach(s=>{if(sec>s)restNodes.push(...tick(sec-s));});
   restNodes.push(...chime(sec));
   restNodes=restNodes.filter(Boolean);
@@ -1216,7 +1219,7 @@ function startRest(en){
   restTotal=restFor(en);
   if(restTotal<=0){return;}
   wakeAudio();                  // вызвано из обработчика касания — здесь звук и разрешают
-  scheduleRestSound(restTotal);
+  scheduleRestSound(restTotal);restLastTick=-1;
   restEndAt=Date.now()+restTotal*1000;
   $("#rest").classList.add("on");updateRest();requestWake();
   clearInterval(restInt);
@@ -1224,7 +1227,7 @@ function startRest(en){
     const left=restRemaining();
     if(left<=0){clearInterval(restInt);restDone();}
     else{
-      if(left<=3)vibe(20);      // где вибрация есть; на iOS её нет вовсе
+      if(left<=3){vibe(20);if(sfxMode()==="audio"&&left!==restLastTick){restLastTick=left;sfxPlay("tick");}}
       updateRest();
     }
   },250);
@@ -1235,7 +1238,7 @@ function updateRest(){
   $("#restProg").style.width=(100*(restTotal-left)/restTotal)+"%";
 }
 // звук уже запланирован при старте — здесь только вибрация и закрытие
-function restDone(){vibe([70,50,70,50,140]);setTimeout(stopRest,700);}
+function restDone(){vibe([70,50,70,50,140]);if(sfxMode()==="audio")sfxPlay("chime");setTimeout(stopRest,700);}
 function stopRest(){clearInterval(restInt);cancelRestSound();$("#rest").classList.remove("on");if(!timersActive())releaseWake();}
 $("#restSkip").onclick=stopRest;
 $("#restAdd").onclick=()=>{restEndAt+=15000;restTotal+=15;scheduleRestSound(restRemaining());updateRest();};
@@ -1251,6 +1254,71 @@ document.addEventListener("visibilitychange",()=>{
 
 /* ============ HOLD TIMER (timed exercises) ============ */
 let AC=null;
+
+/* ===== Второй способ подачи сигнала =====
+   На iOS звуковой движок (Web Audio) глушится боковым переключателем
+   «без звука». Обычный медиа-элемент идёт через другой канал, поэтому
+   держим оба способа и даём переключаться между ними.
+   Звук генерим сами в WAV — приложение остаётся самодостаточным.      */
+const IS_IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)
+           ||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function makeWav(segs,rate){
+  rate=rate||22050;
+  let total=0; segs.forEach(s=>total+=Math.round((s.d+(s.gap||0))*rate));
+  const buf=new ArrayBuffer(44+total*2),v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,"RIFF");v.setUint32(4,36+total*2,true);w(8,"WAVEfmt ");
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);
+  w(36,"data");v.setUint32(40,total*2,true);
+  let p=44;
+  segs.forEach(s=>{
+    const n=Math.round(s.d*rate);
+    for(let i=0;i<n;i++){
+      const env=Math.min(1,i/(rate*0.005),(n-i)/(rate*0.02));
+      v.setInt16(p,Math.round(Math.sin(2*Math.PI*s.f*i/rate)*env*22000),true);p+=2;
+    }
+    const g=Math.round((s.gap||0)*rate);
+    for(let i=0;i<g;i++){v.setInt16(p,0,true);p+=2;}
+  });
+  const b=new Uint8Array(buf);let bin="";
+  for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
+  return "data:audio/wav;base64,"+btoa(bin);
+}
+let sfxReady=false,sfxNote="";
+function sfxInit(){
+  if(sfxReady)return;
+  try{
+    $("#sfxTick").src=makeWav([{f:640,d:0.09}]);
+    $("#sfxChime").src=makeWav([{f:660,d:0.13,gap:0.02},{f:880,d:0.13,gap:0.02},{f:1180,d:0.22}]);
+    sfxReady=true;
+  }catch(e){sfxNote="wav: "+e.message;}
+}
+// разблокировка: проигрываем беззвучно, чтобы iOS разрешил играть дальше
+function sfxUnlock(){
+  sfxInit();
+  ["#sfxTick","#sfxChime"].forEach(id=>{
+    const a=$(id); if(!a||a.dataset.ok)return;
+    a.muted=true;
+    const p=a.play();
+    if(p&&p.then)p.then(()=>{a.pause();a.currentTime=0;a.muted=false;a.dataset.ok="1";})
+                  .catch(e=>{a.muted=false;sfxNote="audio: "+e.name;});
+    else{a.pause();a.currentTime=0;a.muted=false;a.dataset.ok="1";}
+  });
+}
+// какой способ используем: явная настройка, иначе медиа-элемент на iOS
+const sfxMode=()=>{
+  const m=DB&&DB.settings&&DB.settings.sfx;
+  if(m==="audio"||m==="webaudio")return m;
+  return IS_IOS?"audio":"webaudio";
+};
+function sfxPlay(which){
+  if(DB&&DB.settings&&DB.settings.sound===false)return;
+  sfxInit();
+  const a=$(which==="chime"?"#sfxChime":"#sfxTick");
+  if(!a)return;
+  try{a.currentTime=0;const p=a.play();if(p&&p.catch)p.catch(e=>{sfxNote="audio: "+e.name;});}catch(e){sfxNote="audio: "+e.message;}
+}
 /* Браузер разрешает звук только в контексте, разбуженном касанием экрана.
    Таймер отдыха запускается сам, поэтому его сигнал молчал: контекст
    создавался внутри setInterval и оставался заглушённым. Будим его при
@@ -1261,8 +1329,9 @@ function wakeAudio(){
     if(AC.state==="suspended")AC.resume();
   }catch(e){}
 }
-document.addEventListener("pointerdown",wakeAudio,{passive:true});
-document.addEventListener("touchend",wakeAudio,{passive:true});
+const unlockAll=()=>{wakeAudio();sfxUnlock();};
+document.addEventListener("pointerdown",unlockAll,{passive:true});
+document.addEventListener("touchend",unlockAll,{passive:true});
 
 function beep(freq,dur,offset){
   if(DB&&DB.settings&&DB.settings.sound===false)return null;
@@ -1278,8 +1347,14 @@ function beep(freq,dur,offset){
   }catch(e){return null;}
 }
 // три ноты вверх — «время вышло»; слышно лучше одиночного писка
-const chime=off=>[beep(660,0.13,off||0),beep(880,0.13,(off||0)+0.14),beep(1180,0.2,(off||0)+0.28)];
-const tick=off=>[beep(640,0.08,off||0)];
+const chime=off=>{
+  if(sfxMode()==="audio"){if(!off)sfxPlay("chime");else setTimeout(()=>sfxPlay("chime"),off*1000);return[];}
+  return[beep(660,0.13,off||0),beep(880,0.13,(off||0)+0.14),beep(1180,0.2,(off||0)+0.28)];
+};
+const tick=off=>{
+  if(sfxMode()==="audio"){if(!off)sfxPlay("tick");else setTimeout(()=>sfxPlay("tick"),off*1000);return[];}
+  return[beep(640,0.08,off||0)];
+};
 let htRAF=null;
 function runHoldTimer(en,st,si,onDone){
   try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();}catch(e){}
@@ -1426,23 +1501,50 @@ function More(){
   const w=el("div");
   w.appendChild(el("div","eyebrow","Звук"));
   const sc=el("div","card");sc.style.cssText="padding:14px;margin-bottom:16px";
+  const mode=sfxMode();
   sc.innerHTML=`<div style="display:flex;align-items:center;gap:10px">
     <div style="flex:1"><div style="font-weight:700">Сигналы таймеров</div>
       <div style="color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:3px">
-        Отсчёт последних трёх секунд и сигнал «время вышло» — и в отдыхе, и в упражнениях на время.
-        На айфоне звук глушит боковой переключатель «без звука», а вибрации в браузере нет вовсе.</div></div>
+        Отсчёт последних трёх секунд и сигнал «время вышло» — и в отдыхе, и в упражнениях на время.</div></div>
     <div class="seg" style="flex:0 0 auto" id="sndSeg">
       <button data-v="1" class="${DB.settings.sound!==false?'on':''}">вкл</button>
       <button data-v="0" class="${DB.settings.sound===false?'on':''}">выкл</button>
     </div></div>
-    <button class="bigbtn ghost" id="sndTest" style="margin-top:10px">Проверить сигнал</button>`;
+
+    <div style="font-weight:700;font-size:13px;margin:16px 2px 6px;color:var(--muted)">Способ подачи</div>
+    <div class="seg" id="sfxSeg">
+      <button data-m="audio" class="${mode==="audio"?"on":""}">медиа</button>
+      <button data-m="webaudio" class="${mode==="webaudio"?"on":""}">движок</button>
+    </div>
+    <div style="color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:8px">
+      На айфоне «движок» глушится боковым переключателем «без звука», а «медиа» идёт
+      через канал музыки и обычно звучит и при выключенном звонке. Если не слышно —
+      попробуй второй способ. Вибрации в Safari на iOS нет вовсе.</div>
+
+    <button class="bigbtn ghost" id="sndTest" style="margin-top:12px">Проверить сигнал</button>
+    <div id="sndDiag" style="white-space:pre-line;color:var(--faint);font-size:11.5px;line-height:1.5;margin-top:8px;font-family:ui-monospace,monospace"></div>`;
   w.appendChild(sc);
   sc.querySelectorAll("#sndSeg button").forEach(b=>b.onclick=()=>{
     DB.settings.sound=b.dataset.v==="1";save();render();
   });
+  sc.querySelectorAll("#sfxSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.sfx=b.dataset.m;save();render();
+  });
+  const diag=()=>{
+    const a=$("#sfxTick");
+    return ["способ: "+sfxMode(),
+      "движок: "+(AC?AC.state:"не создан"),
+      "медиа: "+(a&&a.dataset.ok?"разрешён":"не разрешён")+(a&&a.src?", звук готов":", звука нет"),
+      "iOS: "+(IS_IOS?"да":"нет")+" · вибрация: "+(navigator.vibrate?"есть":"нет"),
+      sfxNote?("последняя ошибка — "+sfxNote):"ошибок нет"].join(String.fromCharCode(10));
+  };
+  sc.querySelector("#sndDiag").textContent=diag();
   sc.querySelector("#sndTest").onclick=()=>{
-    wakeAudio(); tick(0); tick(0.6); tick(1.2); chime(1.8); vibe([70,50,70,50,140]);
-    toast(DB.settings.sound===false?"Звук выключен в настройке выше":"Три тика, затем «время вышло»");};
+    unlockAll();
+    tick(0);tick(0.6);tick(1.2);chime(1.9);vibe([70,50,70,50,140]);
+    setTimeout(()=>{const d=sc.querySelector("#sndDiag");if(d)d.textContent=diag();},2600);
+    toast(DB.settings.sound===false?"Звук выключен в настройке выше":"Три тика, затем «время вышло»");
+  };
 
   w.appendChild(el("div","eyebrow","Таймер отдыха"));
   const ar=el("div","card");ar.style.cssText="padding:14px;margin-bottom:10px";
