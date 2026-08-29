@@ -1329,7 +1329,18 @@ function Diary(){
   }else{
     w.appendChild(el("div","empty","Рост появится, когда упражнение встретится минимум в двух тренировках."));
   }
-  w.appendChild(el("div","eyebrow","Тренировки"));
+  // Список тренировок свёрнут: обычно нужен «Рост», а сюда заходят,
+  // только чтобы посмотреть конкретный день или удалить ошибочную запись.
+  const box=el("div"); box.style.display="none";
+  const label=n=>`Показать тренировки (${n})`;
+  const toggle=el("button","libmore",label(DB.history.length));
+  toggle.onclick=()=>{
+    const open=box.style.display==="none";
+    box.style.display=open?"":"none";
+    toggle.textContent=open?"Скрыть тренировки":label(DB.history.length);
+  };
+  w.appendChild(toggle);
+  w.appendChild(box);
   DB.history.forEach(s=>{
     const c=el("div","card hsession");
     const tot=s.entries.reduce((a,e)=>a+e.sets.length,0);
@@ -1344,7 +1355,7 @@ function Diary(){
     const del=el("button","del","Удалить запись");
     del.onclick=()=>{if(confirm("Удалить эту тренировку?")){DB.history=DB.history.filter(x=>x.id!==s.id);save();render();}};
     c.appendChild(del);
-    w.appendChild(c);
+    box.appendChild(c);
   });
   return w;
 }
