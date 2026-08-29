@@ -123,6 +123,16 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
 .rest .lbl{position:relative;flex:1;font-size:13px;color:var(--muted);font-weight:600}
 .rest .rb{position:relative;background:var(--surface2);padding:8px 12px;border-radius:9px;font-weight:700;font-size:13px}
 .rest .rb:active{background:var(--line)}
+.rest.warn .bar{border-color:var(--warn)}
+.rest.warn .t{color:var(--warn)}
+
+/* Вспышка экрана — сигнал, которому не нужен звук.
+   На айфоне с включённым Режимом блокировки звуковые интерфейсы
+   недоступны вовсе, и это единственный способ подать знак. */
+.flash{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:0;
+  background:var(--accent);transition:opacity .12s linear}
+.flash.on{opacity:.55}
+.flash.soft.on{opacity:.22}
 
 /* bottom nav */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(20,22,26,.95);
@@ -302,6 +312,7 @@ h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
   </div>
 </div>
 
+<div class="flash" id="flash"></div>
 <div class="toast" id="toast"></div>
 <audio id="sfxTick" preload="auto" playsinline></audio>
 <audio id="sfxChime" preload="auto" playsinline></audio>
@@ -739,6 +750,7 @@ function normalizeDB(){
   if(DB.settings.prep==null)DB.settings.prep=5;
   if(DB.settings.autoRest==null)DB.settings.autoRest=true;
   if(DB.settings.sound==null)DB.settings.sound=true;
+  if(DB.settings.flash==null)DB.settings.flash=true;
   // сверяем по имени, а не только по флагу: бэкап без settings иначе задваивал дни
   const dayExists=n=>DB.programs.some(p=>p.name===n);
   if(!DB.settings.workBreaksAdded){
@@ -775,6 +787,20 @@ function fmtDate(iso){const d=new Date(iso+"T00:00");return d.toLocaleDateString
 let toastT;
 function toast(msg,pr){const t=$("#toast");t.textContent=msg;t.className="toast on"+(pr?" pr":"");clearTimeout(toastT);toastT=setTimeout(()=>t.className="toast",1600);}
 function vibe(ms){if(navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
+
+/* Сигнал глазами. Работает всегда: не зависит ни от звукового движка,
+   ни от медиа-элемента, ни от бокового переключателя. */
+let flashT=[];
+function flash(times,soft){
+  if(DB&&DB.settings&&DB.settings.flash===false)return;
+  const el0=$("#flash"); if(!el0)return;
+  flashT.forEach(clearTimeout); flashT=[];
+  el0.classList.toggle("soft",!!soft);
+  for(let i=0;i<times;i++){
+    flashT.push(setTimeout(()=>el0.classList.add("on"),i*260));
+    flashT.push(setTimeout(()=>el0.classList.remove("on"),i*260+130));
+  }
+}
 
 /* type labels */
 const TYPE={weighted:"вес × повт",reps:"повторы",time:"время"};
@@ -1227,7 +1253,11 @@ function startRest(en){
     const left=restRemaining();
     if(left<=0){clearInterval(restInt);restDone();}
     else{
-      if(left<=3){vibe(20);if(sfxMode()==="audio"&&left!==restLastTick){restLastTick=left;sfxPlay("tick");}}
+      if(left<=3){
+        $("#rest").classList.add("warn");
+        if(left!==restLastTick){restLastTick=left;vibe(20);flash(1,true);
+          if(sfxMode()==="audio")sfxPlay("tick");}
+      }
       updateRest();
     }
   },250);
@@ -1238,8 +1268,15 @@ function updateRest(){
   $("#restProg").style.width=(100*(restTotal-left)/restTotal)+"%";
 }
 // звук уже запланирован при старте — здесь только вибрация и закрытие
-function restDone(){vibe([70,50,70,50,140]);if(sfxMode()==="audio")sfxPlay("chime");setTimeout(stopRest,700);}
-function stopRest(){clearInterval(restInt);cancelRestSound();$("#rest").classList.remove("on");if(!timersActive())releaseWake();}
+function restDone(){
+  vibe([70,50,70,50,140]); flash(3);
+  if(sfxMode()==="audio")sfxPlay("chime");
+  $("#restT").textContent="Время!";
+  setTimeout(stopRest,1400);
+}
+function stopRest(){clearInterval(restInt);cancelRestSound();
+  $("#rest").classList.remove("on");$("#rest").classList.remove("warn");
+  if(!timersActive())releaseWake();}
 $("#restSkip").onclick=stopRest;
 $("#restAdd").onclick=()=>{restEndAt+=15000;restTotal+=15;scheduleRestSound(restRemaining());updateRest();};
 
@@ -1384,7 +1421,7 @@ function runHoldTimer(en,st,si,onDone){
   function stop(){cancelAnimationFrame(htRAF);htRAF=null;ov.classList.remove("on");if(!timersActive())releaseWake();}
   // пишем фактическое время в st.tDone, а не в st.t — иначе досрочное «Готово»
   // навсегда занижало бы цель на следующую тренировку
-  function finish(secs){stop();st.tDone=Math.round(secs);vibe([70,50,70,50,140]);chime(0);onDone();}
+  function finish(secs){stop();st.tDone=Math.round(secs);vibe([70,50,70,50,140]);flash(3);chime(0);onDone();}
   function tick(now){
     if(paused){htRAF=requestAnimationFrame(tick);return;}
     const elapsed=(now-start-pausedTotal)/1000;
@@ -1400,7 +1437,7 @@ function runHoldTimer(en,st,si,onDone){
       big.textContent=Math.max(0,rc);big.style.color="var(--accent)";
       arc.style.stroke="var(--accent)";lbl.textContent=en.name;
       setArc(rem/hold);
-      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;tick(0);vibe(20);}
+      if(rc!==lastBeep&&rc<=3&&rc>=1){lastBeep=rc;tick(0);vibe(20);flash(1,true);}
       if(rem<=0){finish(hold);return;}
     }
     htRAF=requestAnimationFrame(tick);
@@ -1533,6 +1570,15 @@ function More(){
       через канал музыки и обычно звучит и при выключенном звонке. Если не слышно —
       попробуй второй способ. Вибрации в Safari на iOS нет вовсе.</div>
 
+    <div style="font-weight:700;font-size:13px;margin:16px 2px 6px;color:var(--muted)">Вспышка экрана</div>
+    <div class="seg" id="flSeg">
+      <button data-v="1" class="${DB.settings.flash!==false?'on':''}">вкл</button>
+      <button data-v="0" class="${DB.settings.flash===false?'on':''}">выкл</button>
+    </div>
+    <div style="color:var(--muted);font-size:12.5px;line-height:1.45;margin-top:8px">
+      Экран мигает на последних трёх секундах и трижды, когда время вышло.
+      Работает всегда — звук для этого не нужен.</div>
+
     <button class="bigbtn ghost" id="sndTest" style="margin-top:12px">Проверить сигнал</button>
     <div id="sndDiag" style="white-space:pre-line;color:var(--faint);font-size:11.5px;line-height:1.5;margin-top:8px;font-family:ui-monospace,monospace"></div>`;
   w.appendChild(sc);
@@ -1541,6 +1587,10 @@ function More(){
   });
   sc.querySelectorAll("#sfxSeg button").forEach(b=>b.onclick=()=>{
     DB.settings.sfx=b.dataset.m;save();render();
+  });
+  sc.querySelectorAll("#flSeg button").forEach(b=>b.onclick=()=>{
+    DB.settings.flash=b.dataset.v==="1";save();render();
+    if(DB.settings.flash)flash(2);
   });
   const diag=()=>{
     const a=$("#sfxTick");
@@ -1560,6 +1610,8 @@ function More(){
   sc.querySelector("#sndTest").onclick=()=>{
     unlockAll();
     tick(0);tick(0.6);tick(1.2);chime(1.9);vibe([70,50,70,50,140]);
+    flash(1,true);setTimeout(()=>flash(1,true),600);setTimeout(()=>flash(1,true),1200);
+    setTimeout(()=>flash(3),1900);
     refresh(); [400,1200,2600].forEach(ms=>setTimeout(refresh,ms));
     toast(DB.settings.sound===false?"Звук выключен в настройке выше":"Три тика, затем «время вышло»");
   };
