@@ -921,7 +921,7 @@ function EditDay(){
       <div class="nm">${esc(e.name)}<div class="ty">${TYPE[e.type]} · ${esc(tgt)}${e.rpe?` · RPE ${esc(e.rpe)}`:""}</div></div>
       <span class="x" data-x>✕</span>`;
     row.querySelector(".nm").onclick=()=>exForm(p,e);
-    row.querySelector("[data-x]").onclick=()=>{if(confirm("Убрать «"+e.name+"»?")){p.exercises.splice(i,1);save();render();}};
+    row.querySelector("[data-x]").onclick=()=>{if(confirm("Удалить «"+e.name+"» из этого дня? Записи в дневнике останутся.")){p.exercises.splice(i,1);save();render();}};
     row.querySelector("[data-up]").onclick=()=>{if(i>0){[p.exercises[i-1],p.exercises[i]]=[p.exercises[i],p.exercises[i-1]];save();render();}};
     row.querySelector("[data-dn]").onclick=()=>{if(i<p.exercises.length-1){[p.exercises[i+1],p.exercises[i]]=[p.exercises[i],p.exercises[i+1]];save();render();}};
     c.appendChild(row);
@@ -1129,13 +1129,33 @@ function checkPR(en,st){
   return prev>0 && (st.w||0)>prev && (st.r||0)>=(en.rmin||1);
 }
 
+/* Два разных действия, которые раньше выглядели как одно: пропустить
+   упражнение сегодня (день не меняется) и убрать его из дня насовсем.
+   Прежняя формулировка «Убрать из тренировки» читалась как второе,
+   а делала первое — упражнение возвращалось на следующем запуске. */
 function sessionExMenu(ei){
   const en=session.entries[ei];
+  const p=DB.programs.find(x=>x.id===session.programId);
+  const inDay=!!(p&&p.exercises.some(x=>x.id===en.exId));
   sheet(`<h2>${esc(en.name)}</h2>
     <button class="bigbtn ghost" id="s1">${en.note?"Заметка по технике":"Добавить заметку по технике"}</button>
-    <button class="bigbtn danger" id="s2" style="margin-top:8px">Убрать из тренировки</button>`);
+    <button class="bigbtn ghost" id="s2" style="margin-top:8px">Пропустить сегодня</button>
+    <div style="color:var(--faint);font-size:12px;line-height:1.45;margin:6px 2px 0">
+      Уберёт только из этой тренировки. В дне упражнение останется и вернётся в следующий раз.</div>
+    ${inDay?`<button class="bigbtn danger" id="s3" style="margin-top:12px">Удалить из дня насовсем</button>
+    <div style="color:var(--faint);font-size:12px;line-height:1.45;margin:6px 2px 0">
+      Уберёт из программы дня. Записи в дневнике останутся.</div>`:""}`);
   $("#s1").onclick=()=>{closeSheet();sessionNoteEdit(en);};
-  $("#s2").onclick=()=>{closeSheet();session.entries.splice(ei,1);render();};
+  $("#s2").onclick=()=>{closeSheet();session.entries.splice(ei,1);render();toast("Пропущено сегодня — в дне осталось");};
+  const s3=$("#s3");
+  if(s3)s3.onclick=()=>{
+    if(!confirm("Удалить «"+en.name+"» из дня «"+p.name+"» насовсем?"))return;
+    closeSheet();
+    const i=p.exercises.findIndex(x=>x.id===en.exId);
+    if(i>=0)p.exercises.splice(i,1);
+    session.entries.splice(ei,1);
+    save();render();toast("Удалено из дня");
+  };
 }
 function sessionNoteEdit(en){
   sheet(`<h2>${esc(en.name)}</h2>
